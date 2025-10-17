@@ -11,6 +11,29 @@ description = "Command-line interface for the Durable Project Catalog"
 name = "dpc"
 path = "src/main.rs"
 
+[package.metadata.deb]
+maintainer = "Durable Programming LLC <commercial@durableprogramming.com>"
+copyright = "2025, Durable Programming LLC"
+license-file = ["../../LICENSE-MIT", "5"]
+extended-description = """\
+A pragmatic system for discovering and cataloging software projects within \
+deeply nested directory structures. Identifies projects by detecting markers \
+like .git, Cargo.toml, package.json, etc., stores metadata in a SQLite database, \
+and provides a TUI with fuzzy finder for quick directory access."""
+depends = "$auto"
+section = "utility"
+priority = "optional"
+assets = [
+    ["target/release/dpc", "usr/bin/", "755"],
+    ["../../README.md", "usr/share/doc/dpc/README", "644"],
+]
+
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/dpc", dest = "/usr/bin/dpc", mode = "755" },
+    { source = "../../README.md", dest = "/usr/share/doc/dpc/README", mode = "644", doc = true },
+]
+
 [dependencies]
 dprojc-types.workspace = true
 dprojc-utils.workspace = true
