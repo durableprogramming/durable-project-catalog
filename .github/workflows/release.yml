@@ -1,0 +1,275 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.VERSION }}
+    steps:
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+  build-binaries:
+    name: Build ${{ matrix.target }}
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux x86_64
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact_name: dpc-linux-x86_64
+            use_zigbuild: false
+
+          # Linux x86_64 (musl for static linking)
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            artifact_name: dpc-linux-x86_64-musl
+            use_zigbuild: true
+
+          # Linux ARM64
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact_name: dpc-linux-aarch64
+            use_zigbuild: true
+
+          # Linux ARM64 (musl)
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            artifact_name: dpc-linux-aarch64-musl
+            use_zigbuild: true
+
+          # macOS Intel
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            artifact_name: dpc-macos-intel
+            use_zigbuild: false
+
+          # macOS Apple Silicon
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            artifact_name: dpc-macos-arm64
+            use_zigbuild: false
+
+          # Windows x86_64
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            artifact_name: dpc-windows-x86_64.exe
+            use_zigbuild: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Zig (for zigbuild)
+        if: matrix.use_zigbuild
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+
+      - name: Install cargo-zigbuild
+        if: matrix.use_zigbuild
+        run: cargo install cargo-zigbuild
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build binary (cargo)
+        if: ${{ !matrix.use_zigbuild }}
+        run: cargo build --release --target ${{ matrix.target }} -p dprojc-cli
+
+      - name: Build binary (cargo-zigbuild)
+        if: matrix.use_zigbuild
+        run: cargo zigbuild --release --target ${{ matrix.target }} -p dprojc-cli
+
+      - name: Strip binary (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          strip target/${{ matrix.target }}/release/dpc || true
+
+      - name: Prepare artifact (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          mkdir -p artifacts
+          cp target/${{ matrix.target }}/release/dpc artifacts/${{ matrix.artifact_name }}
+          chmod +x artifacts/${{ matrix.artifact_name }}
+
+      - name: Prepare artifact (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          mkdir artifacts
+          copy target\${{ matrix.target }}\release\dpc.exe artifacts\${{ matrix.artifact_name }}
+
+      - name: Upload artifact to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./artifacts/${{ matrix.artifact_name }}
+          asset_name: ${{ matrix.artifact_name }}
+          asset_content_type: application/octet-stream
+
+      - name: Upload artifact for checksums job
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.target }}
+          path: ./artifacts/${{ matrix.artifact_name }}
+          retention-days: 1
+
+  generate-checksums:
+    name: Generate Checksums
+    needs: [create-release, build-binaries]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Generate SHA256 checksums
+        run: |
+          cd artifacts
+          find . -type f -name "dpc-*" -exec sha256sum {} \; | sed 's|./binary-[^/]*/||' > ../checksums.txt
+          cd ..
+          cat checksums.txt
+
+      - name: Upload checksums to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./checksums.txt
+          asset_name: checksums.txt
+          asset_content_type: text/plain
+
+  publish-crates:
+    name: Publish to crates.io
+    needs: [build-binaries]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Publish to crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          # Publish in dependency order
+          cargo publish -p dprojc-types --token ${CARGO_REGISTRY_TOKEN} || true
+          sleep 10
+          cargo publish -p dprojc-utils --token ${CARGO_REGISTRY_TOKEN} || true
+          sleep 10
+          cargo publish -p dprojc-scanner --token ${CARGO_REGISTRY_TOKEN} || true
+          sleep 10
+          cargo publish -p dprojc-config --token ${CARGO_REGISTRY_TOKEN} || true
+          sleep 10
+          cargo publish -p dprojc-db --token ${CARGO_REGISTRY_TOKEN} || true
+          sleep 10
+          cargo publish -p dprojc-core --token ${CARGO_REGISTRY_TOKEN} || true
+          sleep 10
+          cargo publish -p dprojc-docs --token ${CARGO_REGISTRY_TOKEN} || true
+          sleep 10
+          cargo publish -p dprojc-shell --token ${CARGO_REGISTRY_TOKEN} || true
+          sleep 10
+          cargo publish -p dprojc-tui --token ${CARGO_REGISTRY_TOKEN} || true
+          sleep 10
+          cargo publish -p dprojc-examples --token ${CARGO_REGISTRY_TOKEN} || true
+          sleep 10
+          cargo publish -p dprojc-cli --token ${CARGO_REGISTRY_TOKEN} || true
+
+  build-docker:
+    name: Build and Push Docker Images
+    needs: [create-release, build-binaries]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/durable-project-catalog:latest
+            ${{ secrets.DOCKER_USERNAME }}/durable-project-catalog:${{ steps.version.outputs.VERSION }}
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

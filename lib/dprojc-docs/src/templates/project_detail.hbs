@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{project.name}} - Project Details</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .project-header { background: #f5f5f5; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+        .project-meta { margin: 10px 0; }
+        .readme { margin-top: 30px; }
+        .back-link { margin-bottom: 20px; }
+        pre { background: #f8f8f8; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        code { background: #f8f8f8; padding: 2px 4px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="back-link"><a href="projects.html">← Back to Projects</a></div>
+
+    <div class="project-header">
+        <h1>{{project.name}}</h1>
+        <div class="project-meta">
+            <strong>ID:</strong> {{project.id}}<br>
+            <strong>Path:</strong> {{project.path}}<br>
+            <strong>Type:</strong> {{project.project_type}}<br>
+             <strong>Language:</strong> {{project.language}}<br>
+             <strong>Last Modified:</strong> {{project.last_modified}}
+        </div>
+    </div>
+
+    {{#if readme}}
+    <div class="readme">
+        <h2>README</h2>
+        <div>{{{readme}}}</div>
+    </div>
+    {{/if}}
+
+    <p><em>Generated on: {{generated_at}}</em></p>
+</body>
+</html>

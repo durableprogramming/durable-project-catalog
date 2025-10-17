@@ -1,0 +1,19 @@
+[package]
+name = "dprojc-utils"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Utility functions for the Durable Project Catalog"
+
+[dependencies]
+dprojc-types = { path = "../dprojc-types" }
+regex.workspace = true
+anyhow.workspace = true
+walkdir.workspace = true
+dirs.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

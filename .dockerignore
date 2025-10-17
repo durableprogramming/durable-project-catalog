@@ -1,0 +1,35 @@
+# Git
+.git
+.gitignore
+
+# Build artifacts
+target/
+**/*.rs.bk
+
+# Documentation
+docs/
+test_docs/
+*.md
+!README.md
+
+# CI/CD
+.github/
+
+# Development
+.devenv/
+devenv.nix
+devenv.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test data
+tests/fixtures/
+
+# Temporary files
+tmp/
+temp/

@@ -1,0 +1,25 @@
+[package]
+name = "dprojc-shell"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Shell integration for the Durable Project Catalog"
+
+[dependencies]
+anyhow.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+clap = { workspace = true, features = ["derive"] }
+rusqlite.workspace = true
+
+# Local crates
+dprojc-types.workspace = true
+dprojc-db.workspace = true
+dprojc-utils.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

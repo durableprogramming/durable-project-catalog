@@ -1,0 +1,28 @@
+[package]
+name = "dprojc-tui"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Terminal user interface for the durable project catalog"
+
+[dependencies]
+dprojc-types = { path = "../dprojc-types" }
+dprojc-utils = { path = "../dprojc-utils" }
+dprojc-scanner = { path = "../dprojc-scanner" }
+dprojc-config = { path = "../dprojc-config" }
+dprojc-db = { path = "../dprojc-db" }
+anyhow.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+crossterm.workspace = true
+ratatui.workspace = true
+fuzzy-matcher.workspace = true
+chrono.workspace = true
+dirs.workspace = true
+serde.workspace = true
+toml = "0.8"
+
+[dev-dependencies]
+tempfile.workspace = true

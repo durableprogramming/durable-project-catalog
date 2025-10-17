@@ -1,0 +1,40 @@
+[package]
+name = "dprojc-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Command-line interface for the Durable Project Catalog"
+
+[[bin]]
+name = "dpc"
+path = "src/main.rs"
+
+[dependencies]
+dprojc-types.workspace = true
+dprojc-utils.workspace = true
+dprojc-scanner.workspace = true
+dprojc-config.workspace = true
+dprojc-db.workspace = true
+dprojc-core.workspace = true
+dprojc-docs.workspace = true
+dprojc-tui = { path = "../dprojc-tui" }
+dprojc-shell.workspace = true
+tokio.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+chrono.workspace = true
+clap.workspace = true
+dirs.workspace = true
+fuzzy-matcher.workspace = true
+tempfile.workspace = true
+indicatif = "0.17"
+console = "0.15"
+comfy-table = "7.0"
+env_logger = "0.10"
+log = "0.4"
+walkdir = "2.4"

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>README - {{project.name}}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; max-width: 800px; }
+        .project-info { background: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .readme-content { line-height: 1.6; }
+        .readme-content h1, .readme-content h2, .readme-content h3 { margin-top: 30px; }
+        .readme-content pre { background: #f8f8f8; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        .readme-content code { background: #f8f8f8; padding: 2px 4px; border-radius: 3px; }
+        .back-link { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="back-link"><a href="project_{{project.id}}.html">← Back to Project Details</a></div>
+
+    <div class="project-info">
+        <h1>{{project.name}} - README</h1>
+        <p><strong>Path:</strong> {{project.path}}</p>
+        <p><strong>Type:</strong> {{project.project_type}}</p>
+    </div>
+
+    <div class="readme-content">
+        {{{readme}}}
+    </div>
+
+    <p><em>Generated on: {{generated_at}}</em></p>
+</body>
+</html>

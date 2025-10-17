@@ -1,0 +1,22 @@
+[package]
+name = "dprojc-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Core logic for the Durable Project Catalog"
+
+[dependencies]
+dprojc-types = { path = "../dprojc-types" }
+dprojc-utils = { path = "../dprojc-utils" }
+dprojc-scanner = { path = "../dprojc-scanner" }
+dprojc-config = { path = "../dprojc-config" }
+dprojc-db = { path = "../dprojc-db" }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+tempfile = { workspace = true }

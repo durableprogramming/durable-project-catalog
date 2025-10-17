@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projects - Project Catalog</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .project { border: 1px solid #ddd; margin: 10px 0; padding: 15px; border-radius: 5px; }
+        .project h3 { margin-top: 0; }
+        .project-meta { color: #666; font-size: 0.9em; }
+        .project-type { display: inline-block; padding: 2px 8px; background: #e1f5fe; color: #0277bd; border-radius: 3px; }
+        .back-link { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="back-link"><a href="index.html">← Back to Index</a></div>
+
+    <h1>All Projects</h1>
+    <p>Generated on: {{generated_at}}</p>
+
+    <h2>Summary by Type</h2>
+    <ul>
+    {{#each project_counts}}
+        <li>{{@key}}: {{this}}</li>
+    {{/each}}
+    </ul>
+
+    <h2>Projects</h2>
+    {{#each projects}}
+    <div class="project">
+        <h3>{{this.name}}</h3>
+        <div class="project-meta">
+            <strong>Path:</strong> {{this.path}}<br>
+            <strong>Type:</strong> <span class="project-type">{{this.project_type}}</span><br>
+            <strong>Language:</strong> {{this.language}}<br>
+            <strong>Last Modified:</strong> {{this.last_modified}}
+        </div>
+        <p><a href="project_{{this.id}}.html">View Details</a></p>
+    </div>
+    {{/each}}
+</body>
+</html>

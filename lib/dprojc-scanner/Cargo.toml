@@ -1,0 +1,20 @@
+[package]
+name = "dprojc-scanner"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Directory scanning functionality for the Durable Project Catalog"
+
+[dependencies]
+dprojc-types = { path = "../dprojc-types" }
+dprojc-utils = { path = "../dprojc-utils" }
+anyhow.workspace = true
+thiserror.workspace = true
+walkdir.workspace = true
+tokio.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
