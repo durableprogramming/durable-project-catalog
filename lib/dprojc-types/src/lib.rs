@@ -432,7 +432,7 @@ mod tests {
             .contains(&"requirements.txt".to_string()));
         assert_eq!(config.project_indicators.len(), 10);
 
-        assert_eq!(config.follow_symlinks, false);
+        assert!(!config.follow_symlinks);
     }
 
     #[test]
@@ -631,7 +631,7 @@ mod tests {
     #[test]
     fn test_project_types_exhaustive() {
         // Ensure all project types are covered
-        let types = vec![
+        let types = [
             ProjectType::Git,
             ProjectType::NodeJs,
             ProjectType::Ruby,

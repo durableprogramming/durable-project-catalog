@@ -1,5 +1,8 @@
 use dprojc_types::{Project, ProjectType, ScanConfig, ScanError, ScanErrorType, ScanResult};
-use dprojc_utils::{create_walker, has_project_indicator, should_exclude_dir, should_skip_entry, validate_scan_config, validate_scan_path};
+use dprojc_utils::{
+    create_walker, has_project_indicator, should_exclude_dir, should_skip_entry,
+    validate_scan_config, validate_scan_path,
+};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -56,8 +59,11 @@ impl ProjectScanner {
         let mut dirs_scanned = 0;
 
         // Check the root directory for project indicators
-        let root_indicators = has_project_indicator(&root_path_abs, &self.config.project_indicators);
-        if !root_indicators.is_empty() && !should_skip_project(&root_path_abs, &self.config.exclude_patterns) {
+        let root_indicators =
+            has_project_indicator(&root_path_abs, &self.config.project_indicators);
+        if !root_indicators.is_empty()
+            && !should_skip_project(&root_path_abs, &self.config.exclude_patterns)
+        {
             let project = Project {
                 path: root_path_abs.clone(),
                 project_type: ProjectType::from_indicators(&root_indicators),
@@ -82,8 +88,11 @@ impl ProjectScanner {
                     }
 
                     // Check for project indicators
-                    let indicators = has_project_indicator(entry.path(), &self.config.project_indicators);
-                    if !indicators.is_empty() && !should_skip_project(entry.path(), &self.config.exclude_patterns) {
+                    let indicators =
+                        has_project_indicator(entry.path(), &self.config.project_indicators);
+                    if !indicators.is_empty()
+                        && !should_skip_project(entry.path(), &self.config.exclude_patterns)
+                    {
                         // entry.path() from walkdir is already absolute since we use root_path_abs
                         let project = Project {
                             path: entry.path().to_path_buf(),
@@ -96,7 +105,10 @@ impl ProjectScanner {
                 }
                 Err(err) => {
                     let error = ScanError {
-                        path: err.path().map(|p| p.to_path_buf()).unwrap_or_else(|| PathBuf::from("unknown")),
+                        path: err
+                            .path()
+                            .map(|p| p.to_path_buf())
+                            .unwrap_or_else(|| PathBuf::from("unknown")),
                         error_type: ScanErrorType::IoError,
                         message: err.to_string(),
                     };
@@ -171,7 +183,9 @@ impl SharedScanner {
 
     /// Create a new shared scanner with config
     pub fn with_config(config: ScanConfig) -> Self {
-        Self(Arc::new(Mutex::new(ProjectScanner::with_config(config).unwrap())))
+        Self(Arc::new(Mutex::new(
+            ProjectScanner::with_config(config).unwrap(),
+        )))
     }
 }
 
@@ -214,7 +228,10 @@ pub async fn scan_directory(path: &Path) -> anyhow::Result<ScanResult> {
 }
 
 /// Utility function to scan with custom config
-pub async fn scan_directory_with_config(path: &Path, config: ScanConfig) -> anyhow::Result<ScanResult> {
+pub async fn scan_directory_with_config(
+    path: &Path,
+    config: ScanConfig,
+) -> anyhow::Result<ScanResult> {
     let scanner = ProjectScanner::with_config(config)?;
     scanner.scan(path).await
 }
@@ -247,7 +264,9 @@ mod tests {
 
         assert_eq!(result.projects.len(), 1);
         assert_eq!(result.projects[0].project_type, ProjectType::Git);
-        assert!(result.projects[0].indicators.contains(&ProjectIndicator::GitDirectory));
+        assert!(result.projects[0]
+            .indicators
+            .contains(&ProjectIndicator::GitDirectory));
     }
 
     #[tokio::test]
@@ -260,7 +279,9 @@ mod tests {
 
         assert_eq!(result.projects.len(), 1);
         assert_eq!(result.projects[0].project_type, ProjectType::NodeJs);
-        assert!(result.projects[0].indicators.contains(&ProjectIndicator::PackageJson));
+        assert!(result.projects[0]
+            .indicators
+            .contains(&ProjectIndicator::PackageJson));
     }
 
     #[tokio::test]
@@ -276,7 +297,10 @@ mod tests {
 
         // Should not find the project in node_modules
         assert_eq!(result.projects.len(), 0);
-        assert!(result.excluded_dirs.iter().any(|p| p.ends_with("node_modules")));
+        assert!(result
+            .excluded_dirs
+            .iter()
+            .any(|p| p.ends_with("node_modules")));
     }
 
     #[tokio::test]
@@ -288,7 +312,10 @@ mod tests {
         fs::write(temp_dir2.path().join("Cargo.toml"), "[package]").unwrap();
 
         let scanner = ProjectScanner::new().unwrap();
-        let paths = vec![temp_dir1.path().to_path_buf(), temp_dir2.path().to_path_buf()];
+        let paths = vec![
+            temp_dir1.path().to_path_buf(),
+            temp_dir2.path().to_path_buf(),
+        ];
         let results = scanner.scan_multiple(&paths).await.unwrap();
 
         assert_eq!(results.len(), 2);
@@ -311,13 +338,17 @@ mod tests {
         fs::create_dir(temp_dir.path().join("custom_indicator")).unwrap();
 
         let mut config = ScanConfig::default();
-        config.project_indicators.push("custom_indicator".to_string());
+        config
+            .project_indicators
+            .push("custom_indicator".to_string());
 
         let scanner = ProjectScanner::with_config(config).unwrap();
         let result = scanner.scan(temp_dir.path()).await.unwrap();
 
         assert_eq!(result.projects.len(), 1);
-        assert!(result.projects[0].indicators.contains(&ProjectIndicator::Custom("custom_indicator".to_string())));
+        assert!(result.projects[0]
+            .indicators
+            .contains(&ProjectIndicator::Custom("custom_indicator".to_string())));
     }
 
     #[tokio::test]
@@ -331,8 +362,12 @@ mod tests {
 
         assert_eq!(result.projects.len(), 1);
         assert_eq!(result.projects[0].project_type, ProjectType::NodeJs); // PackageJson takes precedence over Git
-        assert!(result.projects[0].indicators.contains(&ProjectIndicator::GitDirectory));
-        assert!(result.projects[0].indicators.contains(&ProjectIndicator::PackageJson));
+        assert!(result.projects[0]
+            .indicators
+            .contains(&ProjectIndicator::GitDirectory));
+        assert!(result.projects[0]
+            .indicators
+            .contains(&ProjectIndicator::PackageJson));
     }
 
     #[tokio::test]
@@ -347,8 +382,16 @@ mod tests {
         let result = scanner.scan(temp_dir.path()).await.unwrap();
 
         assert_eq!(result.projects.len(), 2);
-        let git_project = result.projects.iter().find(|p| p.project_type == ProjectType::Git).unwrap();
-        let rust_project = result.projects.iter().find(|p| p.project_type == ProjectType::Rust).unwrap();
+        let git_project = result
+            .projects
+            .iter()
+            .find(|p| p.project_type == ProjectType::Git)
+            .unwrap();
+        let rust_project = result
+            .projects
+            .iter()
+            .find(|p| p.project_type == ProjectType::Rust)
+            .unwrap();
         assert_eq!(git_project.path, temp_dir.path());
         assert_eq!(rust_project.path, sub_dir);
     }
@@ -382,7 +425,10 @@ mod tests {
         let result = scanner.scan(temp_dir.path()).await.unwrap();
 
         assert_eq!(result.projects.len(), 0);
-        assert!(result.excluded_dirs.iter().any(|p| p.ends_with(".hidden_project")));
+        assert!(result
+            .excluded_dirs
+            .iter()
+            .any(|p| p.ends_with(".hidden_project")));
     }
 
     #[tokio::test]
@@ -405,7 +451,9 @@ mod tests {
         let invalid_path = Path::new("/nonexistent/path");
 
         let scanner = ProjectScanner::new().unwrap();
-        let results = scanner.scan_multiple(&[temp_dir1.path().to_path_buf(), invalid_path.to_path_buf()]).await;
+        let results = scanner
+            .scan_multiple(&[temp_dir1.path().to_path_buf(), invalid_path.to_path_buf()])
+            .await;
 
         assert!(results.is_err()); // Should fail due to invalid path
     }
@@ -420,7 +468,9 @@ mod tests {
         assert_eq!(result.projects[0].project_type, ProjectType::NodeJs);
 
         let config = ScanConfig::default();
-        let result2 = scan_directory_with_config(temp_dir.path(), config).await.unwrap();
+        let result2 = scan_directory_with_config(temp_dir.path(), config)
+            .await
+            .unwrap();
         assert_eq!(result2.projects.len(), 1);
     }
 
@@ -447,11 +497,15 @@ mod tests {
             let temp_dir = tempdir().unwrap();
             fs::write(temp_dir.path().join(indicator), "").unwrap();
 
-        let scanner = ProjectScanner::new().unwrap();
-        let result = scanner.scan(temp_dir.path()).await.unwrap();
+            let scanner = ProjectScanner::new().unwrap();
+            let result = scanner.scan(temp_dir.path()).await.unwrap();
 
             assert_eq!(result.projects.len(), 1, "Failed for {}", indicator);
-            assert_eq!(result.projects[0].project_type, expected_type, "Failed for {}", indicator);
+            assert_eq!(
+                result.projects[0].project_type, expected_type,
+                "Failed for {}",
+                indicator
+            );
         }
     }
 
@@ -464,13 +518,13 @@ mod tests {
         let path = temp_dir.path().to_path_buf();
 
         // Test concurrent access
-        let handles: Vec<_> = (0..5).map(|_| {
-            let scanner = scanner.clone();
-            let path = path.clone();
-            tokio::spawn(async move {
-                scanner.scan(&path).await
+        let handles: Vec<_> = (0..5)
+            .map(|_| {
+                let scanner = scanner.clone();
+                let path = path.clone();
+                tokio::spawn(async move { scanner.scan(&path).await })
             })
-        }).collect();
+            .collect();
 
         for handle in handles {
             let result = handle.await.unwrap().unwrap();
@@ -564,9 +618,7 @@ mod tests {
         let scan_handle = {
             let scanner = scanner.clone();
             let path = path.clone();
-            tokio::spawn(async move {
-                scanner.scan(&path).await
-            })
+            tokio::spawn(async move { scanner.scan(&path).await })
         };
 
         // Update config while scan is potentially running
@@ -606,7 +658,10 @@ mod tests {
         // Should only find the normal project
         assert_eq!(result.projects.len(), 1);
         assert_eq!(result.projects[0].project_type, ProjectType::NodeJs);
-        assert!(result.excluded_dirs.iter().any(|p| p.ends_with("custom_exclude")));
+        assert!(result
+            .excluded_dirs
+            .iter()
+            .any(|p| p.ends_with("custom_exclude")));
     }
 
     #[tokio::test]
@@ -633,7 +688,8 @@ mod tests {
 
         // Create a deep directory structure within default max_depth (10)
         let mut current_path = temp_dir.path().to_path_buf();
-        for i in 0..8 {  // Stay within default max_depth of 10
+        for i in 0..8 {
+            // Stay within default max_depth of 10
             current_path = current_path.join(format!("level_{}", i));
             fs::create_dir(&current_path).unwrap();
         }

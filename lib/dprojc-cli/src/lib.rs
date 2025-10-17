@@ -30,7 +30,9 @@ mod tests {
                 verbose: 0,
                 config: None,
                 database: None,
-                command: Commands::Stats { format: OutputFormat::Table },
+                command: Commands::Stats {
+                    format: OutputFormat::Table,
+                },
             }
         });
 
@@ -42,11 +44,7 @@ mod tests {
     #[test]
     fn test_output_format_variants() {
         // Test that all OutputFormat variants work
-        let formats = vec![
-            OutputFormat::Table,
-            OutputFormat::Json,
-            OutputFormat::Yaml,
-        ];
+        let formats = vec![OutputFormat::Table, OutputFormat::Json, OutputFormat::Yaml];
 
         for format in formats {
             match format {
@@ -278,8 +276,6 @@ pub enum ShellCommands {
     },
 }
 
-
-
 /// Main CLI runner
 pub struct CliRunner {
     config: ScanConfig,
@@ -296,7 +292,9 @@ impl CliRunner {
             ConfigManager::load_config()?
         };
 
-        let database_path = cli.database.clone()
+        let database_path = cli
+            .database
+            .clone()
             .unwrap_or_else(|| dprojc_utils::default_db_path().unwrap());
         let database = ProjectDatabase::open(database_path)?;
 
@@ -310,39 +308,67 @@ impl CliRunner {
     /// Run the CLI command
     pub async fn run(&mut self, command: &Commands) -> anyhow::Result<()> {
         match command {
-            Commands::Scan { paths, max_depth, format, no_save } => {
-                self.run_scan(paths, *max_depth, format, *no_save).await
+            Commands::Scan {
+                paths,
+                max_depth,
+                format,
+                no_save,
+            } => self.run_scan(paths, *max_depth, format, *no_save).await,
+            Commands::List {
+                project_type,
+                search,
+                format,
+                limit,
+            } => {
+                self.run_list(project_type.as_deref(), search.as_deref(), format, *limit)
+                    .await
             }
-            Commands::List { project_type, search, format, limit } => {
-                self.run_list(project_type.as_deref(), search.as_deref(), format, *limit).await
+            Commands::Search {
+                query,
+                format,
+                limit,
+            } => self.run_search(query, format, *limit).await,
+            Commands::Report {
+                output,
+                format,
+                stats,
+            } => self.run_report(output.as_ref(), format, *stats).await,
+            Commands::Stats { format } => self.run_stats(format).await,
+            Commands::Config { format } => self.run_config(format).await,
+            Commands::Clean {
+                max_age_days,
+                dry_run,
+                check_paths,
+            } => self.run_clean(*max_age_days, *dry_run, *check_paths).await,
+            Commands::Docs {
+                output_dir,
+                include_readmes,
+                include_stats,
+                include_details,
+                templates,
+            } => {
+                self.run_docs(
+                    output_dir,
+                    *include_readmes,
+                    *include_stats,
+                    *include_details,
+                    templates.as_ref(),
+                )
+                .await
             }
-            Commands::Search { query, format, limit } => {
-                self.run_search(query, format, *limit).await
+            Commands::Tui {
+                max_display,
+                show_details,
+            } => self.run_tui(*max_display, *show_details).await,
+            Commands::CleanOldCargo {
+                paths,
+                max_age_hours,
+                dry_run,
+            } => {
+                self.run_clean_old_cargo(paths, *max_age_hours, *dry_run)
+                    .await
             }
-            Commands::Report { output, format, stats } => {
-                self.run_report(output.as_ref(), format, *stats).await
-            }
-            Commands::Stats { format } => {
-                self.run_stats(format).await
-            }
-            Commands::Config { format } => {
-                self.run_config(format).await
-            }
-            Commands::Clean { max_age_days, dry_run, check_paths } => {
-                self.run_clean(*max_age_days, *dry_run, *check_paths).await
-            }
-            Commands::Docs { output_dir, include_readmes, include_stats, include_details, templates } => {
-                self.run_docs(output_dir, *include_readmes, *include_stats, *include_details, templates.as_ref()).await
-            }
-            Commands::Tui { max_display, show_details } => {
-                self.run_tui(*max_display, *show_details).await
-            }
-            Commands::CleanOldCargo { paths, max_age_hours, dry_run } => {
-                self.run_clean_old_cargo(paths, *max_age_hours, *dry_run).await
-            }
-            Commands::Shell(shell_cmd) => {
-                self.run_shell(shell_cmd).await
-            }
+            Commands::Shell(shell_cmd) => self.run_shell(shell_cmd).await,
         }
     }
 }

@@ -1,7 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::io;
 use std::path::PathBuf;
 use tokio::sync::mpsc;
-use serde::{Deserialize, Serialize};
 
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
@@ -16,8 +16,8 @@ use ratatui::{
     Frame, Terminal,
 };
 
-use dprojc_types::{Project, ScanResult};
 use dprojc_scanner::SharedScanner;
+use dprojc_types::{Project, ScanResult};
 
 use dprojc_utils::get_project_type_priority;
 use fuzzy_matcher::FuzzyMatcher;
@@ -58,7 +58,10 @@ impl TuiConfig {
     }
 
     /// Load configuration with optional overrides
-    pub fn load_with_overrides(max_display: Option<usize>, show_details: Option<bool>) -> anyhow::Result<Self> {
+    pub fn load_with_overrides(
+        max_display: Option<usize>,
+        show_details: Option<bool>,
+    ) -> anyhow::Result<Self> {
         let mut config = Self::default();
 
         // Try to load from config file
@@ -82,8 +85,8 @@ impl TuiConfig {
 
     /// Load configuration from a TOML file
     fn load_from_file() -> anyhow::Result<Option<Self>> {
-        let config_dir = dirs::config_dir()
-            .ok_or_else(|| anyhow::anyhow!("Could not find config directory"))?;
+        let config_dir =
+            dirs::config_dir().ok_or_else(|| anyhow::anyhow!("Could not find config directory"))?;
         let config_file = config_dir.join("durable-project-catalog").join("tui.toml");
 
         if !config_file.exists() {
@@ -319,7 +322,10 @@ impl App {
     }
 
     /// Main event loop (extracted to work with different backend types)
-    async fn run_loop<B: Backend + std::io::Write>(&mut self, terminal: &mut Terminal<B>) -> anyhow::Result<()> {
+    async fn run_loop<B: Backend + std::io::Write>(
+        &mut self,
+        terminal: &mut Terminal<B>,
+    ) -> anyhow::Result<()> {
         // Load initial data from database (instant)
         self.load_projects().await?;
 
@@ -375,7 +381,11 @@ impl App {
                     self.projects.extend(result.projects);
                     // Collect any errors from the scan
                     for error in result.errors {
-                        self.scan_errors.push(format!("{}: {}", error.path.display(), error.message));
+                        self.scan_errors.push(format!(
+                            "{}: {}",
+                            error.path.display(),
+                            error.message
+                        ));
                     }
                 }
 
@@ -471,7 +481,8 @@ impl App {
             KeyCode::Enter => {
                 if !self.filtered_projects.is_empty() {
                     // Save the selected path and quit (for shell integration)
-                    self.selected_path = Some(self.filtered_projects[self.selected_index].path.clone());
+                    self.selected_path =
+                        Some(self.filtered_projects[self.selected_index].path.clone());
                     self.should_quit = true;
                 }
             }
@@ -510,8 +521,6 @@ impl App {
             }
             _ => {}
         }
-
-
     }
 
     /// Handle keys in project details view
@@ -630,14 +639,22 @@ impl App {
 
         // Project list
         let max_items = self.config.max_display_projects.unwrap_or(usize::MAX);
-        let display_projects = &self.filtered_projects[..self.filtered_projects.len().min(max_items)];
+        let display_projects =
+            &self.filtered_projects[..self.filtered_projects.len().min(max_items)];
 
         // Header
         let shown_count = display_projects.len();
-        let header_text = format!("Durable Project Catalog\nFound {} projects | Showing {} projects",
-            self.projects.len(), shown_count);
+        let header_text = format!(
+            "Durable Project Catalog\nFound {} projects | Showing {} projects",
+            self.projects.len(),
+            shown_count
+        );
         let header = Paragraph::new(header_text)
-            .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+            .style(
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            )
             .block(Block::default().borders(Borders::ALL).title("Header"));
         f.render_widget(header, chunks[0]);
 
@@ -653,10 +670,12 @@ impl App {
 
                 let path_display = dprojc_utils::format_path_display(&project.path);
                 let type_display = format!("{:?}", project.project_type);
-                let content = format!("{} {}\nLast scanned: {}",
+                let content = format!(
+                    "{} {}\nLast scanned: {}",
                     path_display,
                     type_display,
-                    project.last_scanned.format("%Y-%m-%d %H:%M"));
+                    project.last_scanned.format("%Y-%m-%d %H:%M")
+                );
 
                 ListItem::new(content).style(style)
             })
@@ -694,7 +713,11 @@ impl App {
             }
         };
 
-        let status_color = if self.scan_errors.is_empty() { Color::Blue } else { Color::Red };
+        let status_color = if self.scan_errors.is_empty() {
+            Color::Blue
+        } else {
+            Color::Red
+        };
         let status = Paragraph::new(status_text)
             .style(Style::default().bg(status_color).fg(Color::White))
             .alignment(Alignment::Center);
@@ -719,18 +742,27 @@ impl App {
             .split(size);
 
         // Title
-        let title_text = format!("Project Details\n{}", dprojc_utils::format_path_display(&project.path));
+        let title_text = format!(
+            "Project Details\n{}",
+            dprojc_utils::format_path_display(&project.path)
+        );
         let title = Paragraph::new(title_text)
-            .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+            .style(
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            )
             .block(Block::default().borders(Borders::ALL));
         f.render_widget(title, chunks[0]);
 
         // Details
-        let details_text = format!("Type: {:?}\nPath: {}\nLast Scanned: {}\nIndicators: {:?}",
+        let details_text = format!(
+            "Type: {:?}\nPath: {}\nLast Scanned: {}\nIndicators: {:?}",
             project.project_type,
             project.path.display(),
             project.last_scanned,
-            project.indicators);
+            project.indicators
+        );
 
         let details_paragraph = Paragraph::new(details_text)
             .block(Block::default().borders(Borders::ALL).title("Details"));
@@ -747,8 +779,8 @@ impl App {
     fn draw_help<B: Backend>(&self, f: &mut Frame<B>, size: Rect) {
         let help_text = "Keyboard Shortcuts:\n\nNavigation:\n  ↑/k - Move up\n  ↓/j - Move down\n  Enter - View project details\n\nActions:\n  / - Search projects\n  s - Cycle sort mode (Path/Type/Date)\n  r - Refresh/scan again\n  o - Open in editor\n  t - Open in terminal\n  e - Show scan errors (if any)\n  ? - Show this help\n  q/Esc - Quit or go back\n\nSearch:\n  Type to search by path or project type\n  Fuzzy matching is supported\n  Press Enter or Esc to exit search";
 
-        let help = Paragraph::new(help_text)
-            .block(Block::default().borders(Borders::ALL).title("Help"));
+        let help =
+            Paragraph::new(help_text).block(Block::default().borders(Borders::ALL).title("Help"));
         f.render_widget(help, size);
     }
 
@@ -802,7 +834,10 @@ impl App {
 
     /// Draw the errors view
     fn draw_errors<B: Backend>(&self, f: &mut Frame<B>, size: Rect) {
-        let error_text: String = self.scan_errors.iter().enumerate()
+        let error_text: String = self
+            .scan_errors
+            .iter()
+            .enumerate()
             .map(|(i, error)| format!("{}. {}", i + 1, error))
             .collect::<Vec<_>>()
             .join("\n");
@@ -838,7 +873,11 @@ async fn scan_task(
                     match scanner.scan(path).await {
                         Ok(result) => results.push(result),
                         Err(err) => {
-                            let _ = result_tx.send(ScanResultMessage::Error(format!("Failed to scan {}: {}", path.display(), err)));
+                            let _ = result_tx.send(ScanResultMessage::Error(format!(
+                                "Failed to scan {}: {}",
+                                path.display(),
+                                err
+                            )));
                             continue;
                         }
                     }
@@ -865,9 +904,48 @@ pub async fn run_tui_with_config(config: TuiConfig) -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use dprojc_types::{Project, ProjectType, ProjectIndicator, ScanError, ScanErrorType};
-    use std::path::PathBuf;
     use chrono::Utc;
+    use dprojc_types::{Project, ProjectIndicator, ProjectType, ScanError, ScanErrorType};
+    use std::path::PathBuf;
+    use std::sync::Mutex;
+
+    // Mutex to serialize tests that modify environment variables
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    /// RAII guard to backup and restore environment variables
+    struct EnvGuard {
+        vars: Vec<(&'static str, Option<String>)>,
+        _lock: std::sync::MutexGuard<'static, ()>,
+    }
+
+    impl EnvGuard {
+        fn new(var_names: &[&'static str]) -> Self {
+            let lock = ENV_LOCK.lock().unwrap();
+
+            let vars = var_names
+                .iter()
+                .map(|&name| (name, std::env::var(name).ok()))
+                .collect();
+
+            // Clear all vars
+            for &name in var_names {
+                std::env::remove_var(name);
+            }
+
+            Self { vars, _lock: lock }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            for (name, value) in &self.vars {
+                match value {
+                    Some(val) => std::env::set_var(name, val),
+                    None => std::env::remove_var(name),
+                }
+            }
+        }
+    }
 
     fn create_test_project(path: &str, project_type: ProjectType) -> Project {
         Project {
@@ -911,6 +989,7 @@ mod tests {
             config: TuiConfig::default(),
             scan_progress: None,
             sort_mode: SortMode::Path,
+            selected_path: None,
         };
         app.update_filtered_projects();
 
@@ -940,6 +1019,7 @@ mod tests {
             config: TuiConfig::default(),
             scan_progress: None,
             sort_mode: SortMode::Path,
+            selected_path: None,
         };
         app.update_filtered_projects();
 
@@ -968,6 +1048,7 @@ mod tests {
             config: TuiConfig::default(),
             scan_progress: None,
             sort_mode: SortMode::Path,
+            selected_path: None,
         };
         app.update_filtered_projects();
 
@@ -1009,7 +1090,8 @@ mod tests {
         app.state = AppState::Browsing;
 
         app.handle_project_list_key(crossterm::event::KeyCode::Enter);
-        assert_eq!(app.current_view, View::ProjectDetails);
+        assert!(app.should_quit);
+        assert_eq!(app.selected_path, Some(PathBuf::from("/path/to/rust")));
     }
 
     #[test]
@@ -1161,14 +1243,13 @@ mod tests {
         app.handle_help_key(crossterm::event::KeyCode::Esc);
         assert_eq!(app.current_view, View::ProjectList);
 
-        // Go to details (need projects for this)
-        app.projects = vec![create_test_project("/test", ProjectType::Rust)];
-        app.filtered_projects = app.projects.clone();
-        app.handle_project_list_key(crossterm::event::KeyCode::Enter);
-        assert_eq!(app.current_view, View::ProjectDetails);
+        // Test errors view transition
+        app.scan_errors = vec!["Test error".to_string()];
+        app.handle_project_list_key(crossterm::event::KeyCode::Char('e'));
+        assert_eq!(app.current_view, View::Errors);
 
         // Go back to project list
-        app.handle_details_key(crossterm::event::KeyCode::Esc);
+        app.handle_errors_key(crossterm::event::KeyCode::Esc);
         assert_eq!(app.current_view, View::ProjectList);
     }
 
@@ -1299,11 +1380,15 @@ mod tests {
             config: TuiConfig::default(),
             scan_progress: None,
             sort_mode: SortMode::Path,
+            selected_path: None,
         };
         app.update_filtered_projects();
 
         assert_eq!(app.filtered_projects.len(), 1);
-        assert!(app.filtered_projects[0].path.to_string_lossy().contains("rust-project"));
+        assert!(app.filtered_projects[0]
+            .path
+            .to_string_lossy()
+            .contains("rust-project"));
     }
 
     #[test]
@@ -1312,9 +1397,7 @@ mod tests {
         let (_scan_result_tx, scan_result_rx) = mpsc::unbounded_channel::<ScanResultMessage>();
         let mut app = App {
             state: AppState::Loading,
-            projects: vec![
-                create_test_project("/path/to/rust", ProjectType::Rust),
-            ],
+            projects: vec![create_test_project("/path/to/rust", ProjectType::Rust)],
             filtered_projects: Vec::new(),
             search_query: "nonexistent".to_string(),
             selected_index: 0,
@@ -1326,6 +1409,7 @@ mod tests {
             config: TuiConfig::default(),
             scan_progress: None,
             sort_mode: SortMode::Path,
+            selected_path: None,
         };
         app.update_filtered_projects();
 
@@ -1412,7 +1496,9 @@ mod tests {
         let mut terminal = ratatui::Terminal::new(backend).unwrap();
 
         // Should not panic
-        terminal.draw(|f| app.draw_project_details(f, f.size())).unwrap();
+        terminal
+            .draw(|f| app.draw_project_details(f, f.size()))
+            .unwrap();
     }
 
     #[test]
@@ -1427,8 +1513,8 @@ mod tests {
 
     #[test]
     fn test_config_save_and_load() {
-        use tempfile::tempdir;
         use std::fs;
+        use tempfile::tempdir;
 
         let temp_dir = tempdir().unwrap();
         let config_dir = temp_dir.path().join("durable-project-catalog");
@@ -1447,7 +1533,10 @@ mod tests {
 
         let loaded_config = TuiConfig::load().unwrap();
         assert_eq!(loaded_config.scan_paths, config.scan_paths);
-        assert_eq!(loaded_config.max_display_projects, config.max_display_projects);
+        assert_eq!(
+            loaded_config.max_display_projects,
+            config.max_display_projects
+        );
         assert_eq!(loaded_config.show_details, config.show_details);
 
         // Clean up
@@ -1458,10 +1547,11 @@ mod tests {
     fn test_config_load_from_env() {
         use tempfile::tempdir;
 
-        // Ensure clean environment
-        std::env::remove_var("DURABLE_SCAN_PATHS");
-        std::env::remove_var("DURABLE_MAX_DISPLAY_PROJECTS");
-        std::env::remove_var("DURABLE_SHOW_DETAILS");
+        let _guard = EnvGuard::new(&[
+            "DURABLE_SCAN_PATHS",
+            "DURABLE_MAX_DISPLAY_PROJECTS",
+            "DURABLE_SHOW_DETAILS",
+        ]);
 
         let temp_dir = tempdir().unwrap();
         let path1 = temp_dir.path().join("path1");
@@ -1469,7 +1559,10 @@ mod tests {
         std::fs::create_dir_all(&path1).unwrap();
         std::fs::create_dir_all(&path2).unwrap();
 
-        std::env::set_var("DURABLE_SCAN_PATHS", format!("{},{}", path1.display(), path2.display()));
+        std::env::set_var(
+            "DURABLE_SCAN_PATHS",
+            format!("{},{}", path1.display(), path2.display()),
+        );
         std::env::set_var("DURABLE_MAX_DISPLAY_PROJECTS", "25");
         std::env::set_var("DURABLE_SHOW_DETAILS", "true");
 
@@ -1481,11 +1574,6 @@ mod tests {
         assert!(config.scan_paths.contains(&path2));
         assert_eq!(config.max_display_projects, Some(25));
         assert!(config.show_details);
-
-        // Clean up
-        std::env::remove_var("DURABLE_SCAN_PATHS");
-        std::env::remove_var("DURABLE_MAX_DISPLAY_PROJECTS");
-        std::env::remove_var("DURABLE_SHOW_DETAILS");
     }
 
     #[tokio::test]
@@ -1524,21 +1612,32 @@ mod tests {
                 }
             }
             messages
-        }).await;
+        })
+        .await;
 
         assert!(result.is_ok(), "Scan task timed out");
         let messages = result.unwrap();
 
         // Should have received progress and success messages
         assert!(!messages.is_empty());
-        assert!(messages.iter().any(|msg| matches!(msg, ScanResultMessage::Progress(_, _))));
-        assert!(messages.iter().any(|msg| matches!(msg, ScanResultMessage::Success(_))));
+        assert!(messages
+            .iter()
+            .any(|msg| matches!(msg, ScanResultMessage::Progress(_, _))));
+        assert!(messages
+            .iter()
+            .any(|msg| matches!(msg, ScanResultMessage::Success(_))));
 
         // Check that we found the project
-        if let Some(ScanResultMessage::Success(results)) = messages.iter().find(|msg| matches!(msg, ScanResultMessage::Success(_))) {
+        if let Some(ScanResultMessage::Success(results)) = messages
+            .iter()
+            .find(|msg| matches!(msg, ScanResultMessage::Success(_)))
+        {
             assert!(!results.is_empty());
             assert!(!results[0].projects.is_empty());
-            assert_eq!(results[0].projects[0].project_type, dprojc_types::ProjectType::Rust);
+            assert_eq!(
+                results[0].projects[0].project_type,
+                dprojc_types::ProjectType::Rust
+            );
         }
     }
 
@@ -1566,6 +1665,7 @@ mod tests {
             config: TuiConfig::default(),
             scan_progress: None,
             sort_mode: SortMode::Path,
+            selected_path: None,
         };
 
         app.filtered_projects = app.projects.clone();
@@ -1593,12 +1693,6 @@ mod tests {
         app.handle_project_list_key(crossterm::event::KeyCode::Esc);
         assert_eq!(app.state, AppState::Browsing);
         assert_eq!(app.filtered_projects.len(), 3); // Back to all projects
-
-        // Test view transitions
-        app.handle_project_list_key(crossterm::event::KeyCode::Enter);
-        assert_eq!(app.current_view, View::ProjectDetails);
-        app.handle_details_key(crossterm::event::KeyCode::Esc);
-        assert_eq!(app.current_view, View::ProjectList);
 
         // Test help view
         app.handle_project_list_key(crossterm::event::KeyCode::Char('?'));

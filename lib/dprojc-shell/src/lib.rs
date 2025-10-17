@@ -5,7 +5,6 @@
 
 use anyhow::{Context, Result};
 use dprojc_db::ProjectDatabase;
-use dprojc_types::{Project, ProjectIndicator, ProjectType};
 use std::path::{Path, PathBuf};
 
 mod completions;
@@ -140,8 +139,8 @@ impl ShellIntegration {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use dprojc_types::{Project, ProjectIndicator, ProjectType};
     use std::sync::atomic::{AtomicU32, Ordering};
-    use tempfile::tempdir;
 
     fn create_test_db() -> Result<(ProjectDatabase, PathBuf)> {
         static COUNTER: AtomicU32 = AtomicU32::new(0);
@@ -193,14 +192,14 @@ mod tests {
 
     #[test]
     fn test_shell_integration_creation() {
-        let (db, db_path) = create_test_db().unwrap();
+        let (_db, db_path) = create_test_db().unwrap();
         let shell = ShellIntegration::new(&db_path);
         assert!(shell.is_ok());
     }
 
     #[test]
     fn test_query_empty_database() {
-        let (db, db_path) = create_test_db().unwrap();
+        let (_db, db_path) = create_test_db().unwrap();
         let shell = ShellIntegration::new(&db_path).unwrap();
         let results = shell.query("test", 10).unwrap();
         assert_eq!(results.len(), 0);
@@ -254,7 +253,7 @@ mod tests {
 
     #[test]
     fn test_matches_pattern() {
-        let (db, db_path) = create_test_db().unwrap();
+        let (_db, db_path) = create_test_db().unwrap();
         let shell = ShellIntegration::new(&db_path).unwrap();
 
         // Test substring matching

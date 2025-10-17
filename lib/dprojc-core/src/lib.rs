@@ -1,11 +1,10 @@
 use dprojc_config::ConfigManager;
 use dprojc_db::ProjectDatabase;
-use dprojc_types::{ScanResultSummary, ScanStatistics};
 use dprojc_scanner::{scan_directory_with_config, SharedScanner};
-use dprojc_types::{Project, ProjectType, ScanConfig, ScanResult, ProjectIndicator};
+use dprojc_types::{Project, ProjectType, ScanConfig, ScanResult};
+use dprojc_types::{ScanResultSummary, ScanStatistics};
 use dprojc_utils::default_db_path;
 use std::path::Path;
-
 
 /// Main catalog struct that orchestrates scanning, database operations, and configuration
 pub struct ProjectCatalog {
@@ -22,7 +21,11 @@ impl ProjectCatalog {
         let db = ProjectDatabase::open(&db_path)?;
         let scanner = SharedScanner::with_config(config.clone());
 
-        Ok(Self { config, db, scanner })
+        Ok(Self {
+            config,
+            db,
+            scanner,
+        })
     }
 
     /// Create a new catalog with custom configuration
@@ -33,7 +36,11 @@ impl ProjectCatalog {
         dprojc_utils::validate_scan_config(&config)?;
         let scanner = SharedScanner::with_config(config.clone());
 
-        Ok(Self { config, db, scanner })
+        Ok(Self {
+            config,
+            db,
+            scanner,
+        })
     }
 
     /// Create a new catalog with custom database path
@@ -42,7 +49,11 @@ impl ProjectCatalog {
         let db = ProjectDatabase::open(db_path)?;
         let scanner = SharedScanner::with_config(config.clone());
 
-        Ok(Self { config, db, scanner })
+        Ok(Self {
+            config,
+            db,
+            scanner,
+        })
     }
 
     /// Scan a single directory for projects and store results
@@ -53,7 +64,10 @@ impl ProjectCatalog {
     }
 
     /// Scan multiple directories concurrently and store results
-    pub async fn scan_directories(&mut self, paths: &[std::path::PathBuf]) -> anyhow::Result<Vec<ScanResult>> {
+    pub async fn scan_directories(
+        &mut self,
+        paths: &[std::path::PathBuf],
+    ) -> anyhow::Result<Vec<ScanResult>> {
         let scan_results = self.scanner.scan_multiple(paths).await?;
         for result in &scan_results {
             self.db.store_scan_result(result)?;
@@ -67,7 +81,10 @@ impl ProjectCatalog {
     }
 
     /// Get projects by type
-    pub async fn get_projects_by_type(&self, project_type: &ProjectType) -> anyhow::Result<Vec<Project>> {
+    pub async fn get_projects_by_type(
+        &self,
+        project_type: &ProjectType,
+    ) -> anyhow::Result<Vec<Project>> {
         Ok(self.db.get_projects_by_type(project_type)?)
     }
 
@@ -77,12 +94,17 @@ impl ProjectCatalog {
     }
 
     /// Get projects by indicator type
-    pub async fn get_projects_by_indicator(&self, indicator: &dprojc_types::ProjectIndicator) -> anyhow::Result<Vec<Project>> {
+    pub async fn get_projects_by_indicator(
+        &self,
+        indicator: &dprojc_types::ProjectIndicator,
+    ) -> anyhow::Result<Vec<Project>> {
         Ok(self.db.get_projects_by_indicator(indicator)?)
     }
 
     /// Get project counts by type
-    pub async fn get_project_counts(&self) -> anyhow::Result<std::collections::HashMap<ProjectType, usize>> {
+    pub async fn get_project_counts(
+        &self,
+    ) -> anyhow::Result<std::collections::HashMap<ProjectType, usize>> {
         Ok(self.db.get_project_counts_by_type()?)
     }
 
@@ -97,7 +119,10 @@ impl ProjectCatalog {
     }
 
     /// Get a project by path
-    pub async fn get_project_by_path<P: AsRef<Path>>(&self, path: P) -> anyhow::Result<Option<Project>> {
+    pub async fn get_project_by_path<P: AsRef<Path>>(
+        &self,
+        path: P,
+    ) -> anyhow::Result<Option<Project>> {
         Ok(self.db.get_project_by_path(path)?)
     }
 
@@ -118,7 +143,11 @@ impl ProjectCatalog {
     }
 
     /// Perform an incremental scan (only scan paths that haven't been scanned recently)
-    pub async fn incremental_scan(&mut self, paths: &[std::path::PathBuf], max_age_hours: i64) -> anyhow::Result<Vec<ScanResult>> {
+    pub async fn incremental_scan(
+        &mut self,
+        paths: &[std::path::PathBuf],
+        max_age_hours: i64,
+    ) -> anyhow::Result<Vec<ScanResult>> {
         let cutoff_time = chrono::Utc::now() - chrono::Duration::hours(max_age_hours);
         let mut results = Vec::new();
 
@@ -174,7 +203,10 @@ impl ProjectCatalog {
     }
 
     /// Get frecency score for a specific project path
-    pub async fn get_project_frecency_score<P: AsRef<Path>>(&self, path: P) -> anyhow::Result<Option<f64>> {
+    pub async fn get_project_frecency_score<P: AsRef<Path>>(
+        &self,
+        path: P,
+    ) -> anyhow::Result<Option<f64>> {
         Ok(self.db.get_frecency_score(path)?)
     }
 
@@ -208,7 +240,10 @@ pub mod utils {
     }
 
     /// Scan a directory with custom config without storing in database
-    pub async fn scan_directory_with_custom_config<P: AsRef<Path>>(path: P, config: ScanConfig) -> anyhow::Result<ScanResult> {
+    pub async fn scan_directory_with_custom_config<P: AsRef<Path>>(
+        path: P,
+        config: ScanConfig,
+    ) -> anyhow::Result<ScanResult> {
         scan_directory_with_config(path.as_ref(), config).await
     }
 }
@@ -216,6 +251,7 @@ pub mod utils {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use dprojc_types::ProjectIndicator;
 
     use std::fs;
     use tempfile::tempdir;
@@ -261,10 +297,22 @@ mod tests {
         fs::create_dir(temp_dir1.path().join(".git")).unwrap();
         fs::write(temp_dir2.path().join("Cargo.toml"), "[package]").unwrap();
 
-        catalog.scan_directories(&[temp_dir1.path().to_path_buf(), temp_dir2.path().to_path_buf()]).await.unwrap();
+        catalog
+            .scan_directories(&[
+                temp_dir1.path().to_path_buf(),
+                temp_dir2.path().to_path_buf(),
+            ])
+            .await
+            .unwrap();
 
-        let git_projects = catalog.get_projects_by_type(&ProjectType::Git).await.unwrap();
-        let rust_projects = catalog.get_projects_by_type(&ProjectType::Rust).await.unwrap();
+        let git_projects = catalog
+            .get_projects_by_type(&ProjectType::Git)
+            .await
+            .unwrap();
+        let rust_projects = catalog
+            .get_projects_by_type(&ProjectType::Rust)
+            .await
+            .unwrap();
 
         assert_eq!(git_projects.len(), 1);
         assert_eq!(rust_projects.len(), 1);
@@ -293,7 +341,13 @@ mod tests {
         fs::create_dir(temp_dir1.path().join(".git")).unwrap();
         fs::write(temp_dir2.path().join("Cargo.toml"), "[package]").unwrap();
 
-        catalog.scan_directories(&[temp_dir1.path().to_path_buf(), temp_dir2.path().to_path_buf()]).await.unwrap();
+        catalog
+            .scan_directories(&[
+                temp_dir1.path().to_path_buf(),
+                temp_dir2.path().to_path_buf(),
+            ])
+            .await
+            .unwrap();
 
         let counts = catalog.get_project_counts().await.unwrap();
         assert_eq!(*counts.get(&ProjectType::Git).unwrap_or(&0), 1);
@@ -323,11 +377,17 @@ mod tests {
         fs::create_dir(temp_dir.path().join(".git")).unwrap();
 
         // First scan
-        let results1 = catalog.incremental_scan(&[temp_dir.path().to_path_buf()], 1).await.unwrap();
+        let results1 = catalog
+            .incremental_scan(&[temp_dir.path().to_path_buf()], 1)
+            .await
+            .unwrap();
         assert_eq!(results1.len(), 1);
 
         // Second scan within the hour should be skipped
-        let results2 = catalog.incremental_scan(&[temp_dir.path().to_path_buf()], 1).await.unwrap();
+        let results2 = catalog
+            .incremental_scan(&[temp_dir.path().to_path_buf()], 1)
+            .await
+            .unwrap();
         assert_eq!(results2.len(), 0);
     }
 
@@ -359,7 +419,10 @@ mod tests {
         assert_eq!(projects.len(), 1);
 
         // Delete project
-        let deleted = catalog.delete_project_by_path(temp_dir.path()).await.unwrap();
+        let deleted = catalog
+            .delete_project_by_path(temp_dir.path())
+            .await
+            .unwrap();
         assert!(deleted);
 
         // Verify project is gone
@@ -404,7 +467,10 @@ mod tests {
     async fn test_get_project_by_path_nonexistent() {
         let (catalog, _temp_dir) = create_test_catalog().await;
 
-        let result = catalog.get_project_by_path("/nonexistent/project").await.unwrap();
+        let result = catalog
+            .get_project_by_path("/nonexistent/project")
+            .await
+            .unwrap();
         assert!(result.is_none());
     }
 
@@ -412,7 +478,10 @@ mod tests {
     async fn test_delete_project_by_path_nonexistent() {
         let (catalog, _temp_dir) = create_test_catalog().await;
 
-        let deleted = catalog.delete_project_by_path("/nonexistent/project").await.unwrap();
+        let deleted = catalog
+            .delete_project_by_path("/nonexistent/project")
+            .await
+            .unwrap();
         assert!(!deleted);
     }
 
@@ -475,7 +544,10 @@ mod tests {
         assert_eq!(results.len(), 0);
 
         // First scan
-        let results1 = catalog.incremental_scan(&[scan_path.clone()], 1).await.unwrap();
+        let results1 = catalog
+            .incremental_scan(&[scan_path.clone()], 1)
+            .await
+            .unwrap();
         assert_eq!(results1.len(), 1);
 
         // Check that scan was recorded
@@ -489,11 +561,17 @@ mod tests {
 
         // Test the database method directly
         let cutoff_time = chrono::Utc::now() - chrono::Duration::hours(1);
-        let has_recent = catalog.db.has_path_been_scanned_recently(&scan_path, cutoff_time).unwrap();
+        let has_recent = catalog
+            .db
+            .has_path_been_scanned_recently(&scan_path, cutoff_time)
+            .unwrap();
         assert!(has_recent, "Path should have been scanned recently");
 
         // Scan again with a cutoff that should prevent scanning (since scan was recent)
-        let results2 = catalog.incremental_scan(&[scan_path.clone()], 1).await.unwrap();
+        let results2 = catalog
+            .incremental_scan(&[scan_path.clone()], 1)
+            .await
+            .unwrap();
         assert_eq!(results2.len(), 0);
 
         // Scan with very recent cutoff (0 hours) - should scan again since scan_timestamp <= now
@@ -535,8 +613,12 @@ mod tests {
         fs::write(temp_dir2.path().join("Cargo.toml"), "[package]").unwrap();
 
         // Create multiple catalog instances to test concurrent access
-        let mut catalog1 = ProjectCatalog::with_db_path(_temp_dir.path().join("test.db")).await.unwrap();
-        let mut catalog2 = ProjectCatalog::with_db_path(_temp_dir.path().join("test.db")).await.unwrap();
+        let mut catalog1 = ProjectCatalog::with_db_path(_temp_dir.path().join("test.db"))
+            .await
+            .unwrap();
+        let mut catalog2 = ProjectCatalog::with_db_path(_temp_dir.path().join("test.db"))
+            .await
+            .unwrap();
 
         // Scan concurrently
         let (result1, result2) = tokio::join!(
@@ -563,11 +645,17 @@ mod tests {
         catalog.scan_directory(temp_dir.path()).await.unwrap();
 
         // Record access
-        let recorded = catalog.record_project_access(temp_dir.path()).await.unwrap();
+        let recorded = catalog
+            .record_project_access(temp_dir.path())
+            .await
+            .unwrap();
         assert!(recorded);
 
         // Get frecency score
-        let score = catalog.get_project_frecency_score(temp_dir.path()).await.unwrap();
+        let score = catalog
+            .get_project_frecency_score(temp_dir.path())
+            .await
+            .unwrap();
         assert!(score.is_some());
         assert!(score.unwrap() > 0.0);
 
@@ -576,7 +664,10 @@ mod tests {
         assert_eq!(frecency_projects.len(), 1);
 
         // Test non-existent project
-        let nonexistent_score = catalog.get_project_frecency_score("/nonexistent").await.unwrap();
+        let nonexistent_score = catalog
+            .get_project_frecency_score("/nonexistent")
+            .await
+            .unwrap();
         assert!(nonexistent_score.is_none());
 
         let nonexistent_recorded = catalog.record_project_access("/nonexistent").await.unwrap();
@@ -665,7 +756,7 @@ mod tests {
 
         let summary = &summaries[0];
         assert!(summary.dirs_scanned >= 1); // At least the root dir
-        assert!(summary.scan_duration_ms >= 0); // Duration should be non-negative
+                                            // scan_duration_ms is u64, so it's always >= 0
         assert_eq!(summary.error_count, 0);
     }
 
@@ -677,7 +768,9 @@ mod tests {
         let mut config = ScanConfig::default();
         config.max_depth = Some(1);
 
-        let result = utils::scan_directory_with_custom_config(temp_dir.path(), config).await.unwrap();
+        let result = utils::scan_directory_with_custom_config(temp_dir.path(), config)
+            .await
+            .unwrap();
         assert_eq!(result.projects.len(), 1);
     }
 
@@ -701,7 +794,8 @@ mod tests {
         // Create many projects
         let mut temp_dirs = Vec::new();
         let mut paths = Vec::new();
-        for i in 0..10 { // Reduced to 10 to avoid temp dir issues
+        for i in 0..10 {
+            // Reduced to 10 to avoid temp dir issues
             let temp_dir = tempdir().unwrap();
             let project_dir = temp_dir.path().join(format!("project_{}", i));
             fs::create_dir(&project_dir).unwrap();

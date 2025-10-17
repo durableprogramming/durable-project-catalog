@@ -1,16 +1,16 @@
+use anyhow::Result;
 use dprojc_core::ProjectCatalog;
 use dprojc_types::Project;
-use std::path::Path;
-use anyhow::Result;
-use thiserror::Error;
-use serde::{Serialize, Deserialize};
 use handlebars::Handlebars;
-use pulldown_cmark::{Parser, html};
-use syntect::parsing::SyntaxSet;
+use pulldown_cmark::{html, Parser};
+use regex::Regex;
+use serde::{Deserialize, Serialize};
+use std::path::Path;
 use syntect::highlighting::ThemeSet;
 use syntect::html::highlighted_html_for_string;
+use syntect::parsing::SyntaxSet;
+use thiserror::Error;
 use walkdir::WalkDir;
-use regex::Regex;
 
 /// Errors that can occur during documentation generation
 #[derive(Error, Debug)]
@@ -99,10 +99,14 @@ impl<'a> DocumentationGenerator<'a> {
         handlebars.register_template_string("projects", include_str!("templates/projects.hbs"))?;
 
         // Project detail template
-        handlebars.register_template_string("project_detail", include_str!("templates/project_detail.hbs"))?;
+        handlebars.register_template_string(
+            "project_detail",
+            include_str!("templates/project_detail.hbs"),
+        )?;
 
         // Statistics template
-        handlebars.register_template_string("statistics", include_str!("templates/statistics.hbs"))?;
+        handlebars
+            .register_template_string("statistics", include_str!("templates/statistics.hbs"))?;
 
         // README template
         handlebars.register_template_string("readme", include_str!("templates/readme.hbs"))?;
@@ -114,17 +118,27 @@ impl<'a> DocumentationGenerator<'a> {
     fn load_custom_templates(handlebars: &mut Handlebars, template_dir: &str) -> Result<()> {
         let template_path = Path::new(template_dir);
         if !template_path.exists() {
-            return Err(anyhow::anyhow!("Template directory does not exist: {}", template_dir));
+            return Err(anyhow::anyhow!(
+                "Template directory does not exist: {}",
+                template_dir
+            ));
         }
         if !template_path.is_dir() {
-            return Err(anyhow::anyhow!("Template path is not a directory: {}", template_dir));
+            return Err(anyhow::anyhow!(
+                "Template path is not a directory: {}",
+                template_dir
+            ));
         }
 
-        for entry in WalkDir::new(template_dir).into_iter().filter_map(|e| e.ok()) {
+        for entry in WalkDir::new(template_dir)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
             if entry.file_type().is_file() {
                 if let Some(ext) = entry.path().extension() {
                     if ext == "hbs" || ext == "handlebars" {
-                        let template_name = entry.path()
+                        let template_name = entry
+                            .path()
                             .strip_prefix(template_dir)?
                             .with_extension("")
                             .to_string_lossy()
@@ -186,7 +200,10 @@ impl<'a> DocumentationGenerator<'a> {
         let projects = self.catalog.get_all_projects().await?;
         let counts = self.catalog.get_project_counts().await?;
 
-        let projects_data: Vec<serde_json::Value> = projects.iter().map(|p| self.create_project_data(p)).collect();
+        let projects_data: Vec<serde_json::Value> = projects
+            .iter()
+            .map(|p| self.create_project_data(p))
+            .collect();
 
         let data = serde_json::json!({
             "projects": projects_data,
@@ -215,7 +232,10 @@ impl<'a> DocumentationGenerator<'a> {
         });
 
         let output = self.handlebars.render("statistics", &data)?;
-        std::fs::write(format!("{}/statistics.html", self.config.output_dir), output)?;
+        std::fs::write(
+            format!("{}/statistics.html", self.config.output_dir),
+            output,
+        )?;
 
         Ok(())
     }
@@ -285,7 +305,13 @@ impl<'a> DocumentationGenerator<'a> {
 
     /// Extract README content from a project directory
     fn extract_readme(project_path: &Path) -> Result<String> {
-        let readme_files = ["README.md", "README.txt", "README", "readme.md", "readme.txt"];
+        let readme_files = [
+            "README.md",
+            "README.txt",
+            "README",
+            "readme.md",
+            "readme.txt",
+        ];
 
         for filename in &readme_files {
             let readme_path = project_path.join(filename);
@@ -328,11 +354,17 @@ impl<'a> DocumentationGenerator<'a> {
             Some("Rust".to_string())
         } else if path.join("package.json").exists() {
             Some("JavaScript/TypeScript".to_string())
-        } else if path.join("pyproject.toml").exists() || path.join("setup.py").exists() || path.join("requirements.txt").exists() {
+        } else if path.join("pyproject.toml").exists()
+            || path.join("setup.py").exists()
+            || path.join("requirements.txt").exists()
+        {
             Some("Python".to_string())
         } else if path.join("go.mod").exists() || path.join("go.sum").exists() {
             Some("Go".to_string())
-        } else if path.join("pom.xml").exists() || path.join("build.gradle").exists() || path.join("build.gradle.kts").exists() {
+        } else if path.join("pom.xml").exists()
+            || path.join("build.gradle").exists()
+            || path.join("build.gradle.kts").exists()
+        {
             Some("Java".to_string())
         } else if path.join("Gemfile").exists() || path.join(".gemspec").exists() {
             Some("Ruby".to_string())
@@ -355,12 +387,20 @@ impl<'a> DocumentationGenerator<'a> {
 
         let mut content = String::new();
         content.push_str("# Project Catalog Report\n\n");
-        content.push_str(&format!("Generated on: {}\n\n", chrono::Utc::now().to_rfc3339()));
+        content.push_str(&format!(
+            "Generated on: {}\n\n",
+            chrono::Utc::now().to_rfc3339()
+        ));
 
         content.push_str("## Statistics\n\n");
         content.push_str(&format!("- Total Projects: {}\n", projects.len()));
         content.push_str(&format!("- Total Scans: {}\n", stats.total_scans));
-        content.push_str(&format!("- Last Scan: {}\n\n", stats.last_scan_timestamp.map_or("Never".to_string(), |t| t.to_rfc3339())));
+        content.push_str(&format!(
+            "- Last Scan: {}\n\n",
+            stats
+                .last_scan_timestamp
+                .map_or("Never".to_string(), |t| t.to_rfc3339())
+        ));
 
         content.push_str("## Project Types\n\n");
         for (project_type, count) in counts {
@@ -370,16 +410,22 @@ impl<'a> DocumentationGenerator<'a> {
 
         content.push_str("## Projects\n\n");
         for project in projects {
-            let name = project.path.file_name()
+            let name = project
+                .path
+                .file_name()
                 .map(|n| n.to_string_lossy().to_string())
                 .unwrap_or_else(|| "unknown".to_string());
-            let language = Self::detect_language(&project.path).unwrap_or_else(|| "Unknown".to_string());
+            let language =
+                Self::detect_language(&project.path).unwrap_or_else(|| "Unknown".to_string());
 
             content.push_str(&format!("### {}\n\n", name));
             content.push_str(&format!("- **Path:** `{}`\n", project.path.display()));
             content.push_str(&format!("- **Type:** {}\n", project.project_type));
             content.push_str(&format!("- **Language:** {}\n", language));
-            content.push_str(&format!("- **Last Scanned:** {}\n\n", project.last_scanned.to_rfc3339()));
+            content.push_str(&format!(
+                "- **Last Scanned:** {}\n\n",
+                project.last_scanned.to_rfc3339()
+            ));
 
             if let Ok(readme) = Self::extract_readme(&project.path) {
                 content.push_str("#### README\n\n");
@@ -426,23 +472,43 @@ impl<'a> DocumentationGenerator<'a> {
 
     /// Apply syntax highlighting to HTML content
     fn apply_syntax_highlighting(&mut self, html: &mut String) -> Result<()> {
-        let code_block_regex = Regex::new(r#"<pre><code class="language-([^"]*)">([\s\S]*?)</code></pre>"#)?;
+        let code_block_regex =
+            Regex::new(r#"<pre><code class="language-([^"]*)">([\s\S]*?)</code></pre>"#)?;
 
-        let theme = self.theme_set.themes.get(&self.config.theme)
+        let theme = self
+            .theme_set
+            .themes
+            .get(&self.config.theme)
             .or_else(|| self.theme_set.themes.values().next())
             .ok_or_else(|| anyhow::anyhow!("No syntax highlighting theme available"))?;
 
-        *html = code_block_regex.replace_all(html, |caps: &regex::Captures| {
-            let lang = &caps[1];
-            let code = &caps[2];
+        *html = code_block_regex
+            .replace_all(html, |caps: &regex::Captures| {
+                let lang = &caps[1];
+                let code = &caps[2];
 
-            if let Some(syntax) = self.syntax_set.find_syntax_by_token(lang) {
-                highlighted_html_for_string(code, &self.syntax_set, syntax, theme)
-                    .unwrap_or_else(|_| format!("<pre><code class=\"language-{}\">{}</code></pre>", lang, code.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")))
-            } else {
-                format!("<pre><code class=\"language-{}\">{}</code></pre>", lang, code.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
-            }
-        }).to_string();
+                if let Some(syntax) = self.syntax_set.find_syntax_by_token(lang) {
+                    highlighted_html_for_string(code, &self.syntax_set, syntax, theme)
+                        .unwrap_or_else(|_| {
+                            format!(
+                                "<pre><code class=\"language-{}\">{}</code></pre>",
+                                lang,
+                                code.replace("&", "&amp;")
+                                    .replace("<", "&lt;")
+                                    .replace(">", "&gt;")
+                            )
+                        })
+                } else {
+                    format!(
+                        "<pre><code class=\"language-{}\">{}</code></pre>",
+                        lang,
+                        code.replace("&", "&amp;")
+                            .replace("<", "&lt;")
+                            .replace(">", "&gt;")
+                    )
+                }
+            })
+            .to_string();
 
         Ok(())
     }
@@ -459,10 +525,18 @@ pub mod utils {
         let counts = catalog.get_project_counts().await?;
 
         let mut summary = "Project Catalog Summary\n".to_string();
-        summary.push_str(&format!("Generated: {}\n\n", chrono::Utc::now().to_rfc3339()));
+        summary.push_str(&format!(
+            "Generated: {}\n\n",
+            chrono::Utc::now().to_rfc3339()
+        ));
         summary.push_str(&format!("Total Projects: {}\n", projects.len()));
         summary.push_str(&format!("Total Scans: {}\n", stats.total_scans));
-        summary.push_str(&format!("Last Scan: {}\n\n", stats.last_scan_timestamp.map_or("Never".to_string(), |t| t.to_rfc3339())));
+        summary.push_str(&format!(
+            "Last Scan: {}\n\n",
+            stats
+                .last_scan_timestamp
+                .map_or("Never".to_string(), |t| t.to_rfc3339())
+        ));
 
         summary.push_str("Project Types:\n");
         for (project_type, count) in counts {
@@ -471,10 +545,17 @@ pub mod utils {
 
         summary.push_str("\nRecent Projects:\n");
         for project in projects.iter().take(10) {
-            let name = project.path.file_name()
+            let name = project
+                .path
+                .file_name()
                 .map(|n| n.to_string_lossy().to_string())
                 .unwrap_or_else(|| "unknown".to_string());
-            summary.push_str(&format!("  - {} ({}) at {}\n", name, project.project_type, project.path.display()));
+            summary.push_str(&format!(
+                "  - {} ({}) at {}\n",
+                name,
+                project.project_type,
+                project.path.display()
+            ));
         }
 
         Ok(summary)
@@ -488,7 +569,10 @@ pub mod utils {
 
         if let Some(template_dir) = &config.template_dir {
             if !Path::new(template_dir).exists() {
-                return Err(anyhow::anyhow!("Template directory does not exist: {}", template_dir));
+                return Err(anyhow::anyhow!(
+                    "Template directory does not exist: {}",
+                    template_dir
+                ));
             }
         }
 
@@ -531,7 +615,10 @@ mod tests {
         let generator = DocumentationGenerator::new(&catalog, config).unwrap();
 
         let output_path = temp_dir.path().join("report.md");
-        generator.generate_markdown_report(&output_path).await.unwrap();
+        generator
+            .generate_markdown_report(&output_path)
+            .await
+            .unwrap();
 
         assert!(output_path.exists());
         let content = fs::read_to_string(output_path).unwrap();
@@ -799,9 +886,16 @@ mod tests {
         assert!(output_dir.join("statistics.html").exists());
 
         // Check for project detail and README files
-        let files: Vec<_> = fs::read_dir(&output_dir).unwrap().filter_map(|e| e.ok()).collect();
-        let has_project_detail = files.iter().any(|f| f.file_name().to_string_lossy().starts_with("project_"));
-        let has_readme = files.iter().any(|f| f.file_name().to_string_lossy().starts_with("readme_"));
+        let files: Vec<_> = fs::read_dir(&output_dir)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .collect();
+        let has_project_detail = files
+            .iter()
+            .any(|f| f.file_name().to_string_lossy().starts_with("project_"));
+        let has_readme = files
+            .iter()
+            .any(|f| f.file_name().to_string_lossy().starts_with("readme_"));
 
         assert!(has_project_detail);
         assert!(has_readme);
@@ -833,60 +927,90 @@ mod tests {
         let rust_dir = temp_dir.path().join("rust_project");
         fs::create_dir(&rust_dir).unwrap();
         fs::write(rust_dir.join("Cargo.toml"), "[package]").unwrap();
-        assert_eq!(DocumentationGenerator::detect_language(&rust_dir), Some("Rust".to_string()));
+        assert_eq!(
+            DocumentationGenerator::detect_language(&rust_dir),
+            Some("Rust".to_string())
+        );
 
         // Test Node.js detection
         let node_dir = temp_dir.path().join("node_project");
         fs::create_dir(&node_dir).unwrap();
         fs::write(node_dir.join("package.json"), "{}").unwrap();
-        assert_eq!(DocumentationGenerator::detect_language(&node_dir), Some("JavaScript/TypeScript".to_string()));
+        assert_eq!(
+            DocumentationGenerator::detect_language(&node_dir),
+            Some("JavaScript/TypeScript".to_string())
+        );
 
         // Test Python detection (multiple indicators)
         let python_dir = temp_dir.path().join("python_project");
         fs::create_dir(&python_dir).unwrap();
         fs::write(python_dir.join("pyproject.toml"), "[tool.poetry]").unwrap();
-        assert_eq!(DocumentationGenerator::detect_language(&python_dir), Some("Python".to_string()));
+        assert_eq!(
+            DocumentationGenerator::detect_language(&python_dir),
+            Some("Python".to_string())
+        );
 
         let python_dir2 = temp_dir.path().join("python_project2");
         fs::create_dir(&python_dir2).unwrap();
         fs::write(python_dir2.join("requirements.txt"), "flask").unwrap();
-        assert_eq!(DocumentationGenerator::detect_language(&python_dir2), Some("Python".to_string()));
+        assert_eq!(
+            DocumentationGenerator::detect_language(&python_dir2),
+            Some("Python".to_string())
+        );
 
         // Test Go detection
         let go_dir = temp_dir.path().join("go_project");
         fs::create_dir(&go_dir).unwrap();
         fs::write(go_dir.join("go.mod"), "module test").unwrap();
-        assert_eq!(DocumentationGenerator::detect_language(&go_dir), Some("Go".to_string()));
+        assert_eq!(
+            DocumentationGenerator::detect_language(&go_dir),
+            Some("Go".to_string())
+        );
 
         // Test Java detection
         let java_dir = temp_dir.path().join("java_project");
         fs::create_dir(&java_dir).unwrap();
         fs::write(java_dir.join("pom.xml"), "<project>").unwrap();
-        assert_eq!(DocumentationGenerator::detect_language(&java_dir), Some("Java".to_string()));
+        assert_eq!(
+            DocumentationGenerator::detect_language(&java_dir),
+            Some("Java".to_string())
+        );
 
         // Test Ruby detection
         let ruby_dir = temp_dir.path().join("ruby_project");
         fs::create_dir(&ruby_dir).unwrap();
         fs::write(ruby_dir.join("Gemfile"), "source 'https://rubygems.org'").unwrap();
-        assert_eq!(DocumentationGenerator::detect_language(&ruby_dir), Some("Ruby".to_string()));
+        assert_eq!(
+            DocumentationGenerator::detect_language(&ruby_dir),
+            Some("Ruby".to_string())
+        );
 
         // Test PHP detection
         let php_dir = temp_dir.path().join("php_project");
         fs::create_dir(&php_dir).unwrap();
         fs::write(php_dir.join("composer.json"), "{}").unwrap();
-        assert_eq!(DocumentationGenerator::detect_language(&php_dir), Some("PHP".to_string()));
+        assert_eq!(
+            DocumentationGenerator::detect_language(&php_dir),
+            Some("PHP".to_string())
+        );
 
         // Test C/C++ detection
         let cpp_dir = temp_dir.path().join("cpp_project");
         fs::create_dir(&cpp_dir).unwrap();
         fs::write(cpp_dir.join("CMakeLists.txt"), "cmake_minimum_required").unwrap();
-        assert_eq!(DocumentationGenerator::detect_language(&cpp_dir), Some("C/C++".to_string()));
+        assert_eq!(
+            DocumentationGenerator::detect_language(&cpp_dir),
+            Some("C/C++".to_string())
+        );
 
         // Test Nix detection
         let nix_dir = temp_dir.path().join("nix_project");
         fs::create_dir(&nix_dir).unwrap();
         fs::write(nix_dir.join("devenv.nix"), "{}").unwrap();
-        assert_eq!(DocumentationGenerator::detect_language(&nix_dir), Some("Nix".to_string()));
+        assert_eq!(
+            DocumentationGenerator::detect_language(&nix_dir),
+            Some("Nix".to_string())
+        );
 
         // Test unknown language
         let unknown_dir = temp_dir.path().join("unknown_project");
@@ -1011,7 +1135,10 @@ Some text.
         assert!(generator.is_ok());
 
         // Check that the custom template was loaded
-        let result = generator.unwrap().handlebars.render("custom", &serde_json::json!({"title": "Test"}));
+        let result = generator
+            .unwrap()
+            .handlebars
+            .render("custom", &serde_json::json!({"title": "Test"}));
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "<h1>Custom: Test</h1>");
     }

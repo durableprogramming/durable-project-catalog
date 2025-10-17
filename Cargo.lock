@@ -423,7 +423,7 @@ dependencies = [
 
 [[package]]
 name = "dprojc-cli"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "chrono",
@@ -455,7 +455,7 @@ dependencies = [
 
 [[package]]
 name = "dprojc-config"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "dirs",
@@ -468,7 +468,7 @@ dependencies = [
 
 [[package]]
 name = "dprojc-core"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "chrono",
@@ -486,7 +486,7 @@ dependencies = [
 
 [[package]]
 name = "dprojc-db"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "chrono",
@@ -503,7 +503,7 @@ dependencies = [
 
 [[package]]
 name = "dprojc-docs"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "chrono",
@@ -527,7 +527,7 @@ dependencies = [
 
 [[package]]
 name = "dprojc-scanner"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "chrono",
@@ -541,7 +541,7 @@ dependencies = [
 
 [[package]]
 name = "dprojc-shell"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "chrono",
@@ -558,7 +558,7 @@ dependencies = [
 
 [[package]]
 name = "dprojc-tui"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "chrono",
@@ -580,7 +580,7 @@ dependencies = [
 
 [[package]]
 name = "dprojc-types"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "chrono",
  "serde",
@@ -589,7 +589,7 @@ dependencies = [
 
 [[package]]
 name = "dprojc-utils"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "chrono",

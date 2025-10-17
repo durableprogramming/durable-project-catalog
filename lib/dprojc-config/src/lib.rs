@@ -307,7 +307,46 @@ impl ConfigManager {
 mod tests {
     use super::*;
     use std::io::Write;
+    use std::sync::Mutex;
     use tempfile::NamedTempFile;
+
+    // Mutex to serialize tests that modify environment variables
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    /// RAII guard to backup and restore environment variables
+    struct EnvGuard {
+        vars: Vec<(&'static str, Option<String>)>,
+        _lock: std::sync::MutexGuard<'static, ()>,
+    }
+
+    impl EnvGuard {
+        fn new(var_names: &[&'static str]) -> Self {
+            let lock = ENV_LOCK.lock().unwrap();
+
+            let vars = var_names
+                .iter()
+                .map(|&name| (name, env::var(name).ok()))
+                .collect();
+
+            // Clear all vars
+            for &name in var_names {
+                env::remove_var(name);
+            }
+
+            Self { vars, _lock: lock }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            for (name, value) in &self.vars {
+                match value {
+                    Some(val) => env::set_var(name, val),
+                    None => env::remove_var(name),
+                }
+            }
+        }
+    }
 
     #[test]
     fn test_default_config() {
@@ -322,17 +361,12 @@ mod tests {
 
     #[test]
     fn test_load_from_env_only() {
-        // Backup existing env vars
-        let max_depth_backup = env::var("DURABLE_MAX_DEPTH").ok();
-        let follow_symlinks_backup = env::var("DURABLE_FOLLOW_SYMLINKS").ok();
-        let exclude_patterns_backup = env::var("DURABLE_EXCLUDE_PATTERNS").ok();
-        let project_indicators_backup = env::var("DURABLE_PROJECT_INDICATORS").ok();
-
-        // Clear all env vars first
-        env::remove_var("DURABLE_MAX_DEPTH");
-        env::remove_var("DURABLE_FOLLOW_SYMLINKS");
-        env::remove_var("DURABLE_EXCLUDE_PATTERNS");
-        env::remove_var("DURABLE_PROJECT_INDICATORS");
+        let _guard = EnvGuard::new(&[
+            "DURABLE_MAX_DEPTH",
+            "DURABLE_FOLLOW_SYMLINKS",
+            "DURABLE_EXCLUDE_PATTERNS",
+            "DURABLE_PROJECT_INDICATORS",
+        ]);
 
         // Set env to defaults
         env::set_var("DURABLE_MAX_DEPTH", "10");
@@ -346,24 +380,6 @@ mod tests {
             .exclude_patterns
             .contains(&"node_modules".to_string()));
         assert!(!config.follow_symlinks);
-
-        // Restore env vars
-        match max_depth_backup {
-            Some(val) => env::set_var("DURABLE_MAX_DEPTH", val),
-            None => env::remove_var("DURABLE_MAX_DEPTH"),
-        }
-        match follow_symlinks_backup {
-            Some(val) => env::set_var("DURABLE_FOLLOW_SYMLINKS", val),
-            None => env::remove_var("DURABLE_FOLLOW_SYMLINKS"),
-        }
-        match exclude_patterns_backup {
-            Some(val) => env::set_var("DURABLE_EXCLUDE_PATTERNS", val),
-            None => env::remove_var("DURABLE_EXCLUDE_PATTERNS"),
-        }
-        match project_indicators_backup {
-            Some(val) => env::set_var("DURABLE_PROJECT_INDICATORS", val),
-            None => env::remove_var("DURABLE_PROJECT_INDICATORS"),
-        }
     }
 
     #[test]
@@ -424,17 +440,12 @@ follow_symlinks: true
 
     #[test]
     fn test_load_from_path() {
-        // Backup existing env vars
-        let max_depth_backup = env::var("DURABLE_MAX_DEPTH").ok();
-        let exclude_patterns_backup = env::var("DURABLE_EXCLUDE_PATTERNS").ok();
-        let follow_symlinks_backup = env::var("DURABLE_FOLLOW_SYMLINKS").ok();
-        let project_indicators_backup = env::var("DURABLE_PROJECT_INDICATORS").ok();
-
-        // Clear any existing env vars
-        env::remove_var("DURABLE_MAX_DEPTH");
-        env::remove_var("DURABLE_EXCLUDE_PATTERNS");
-        env::remove_var("DURABLE_FOLLOW_SYMLINKS");
-        env::remove_var("DURABLE_PROJECT_INDICATORS");
+        let _guard = EnvGuard::new(&[
+            "DURABLE_MAX_DEPTH",
+            "DURABLE_EXCLUDE_PATTERNS",
+            "DURABLE_FOLLOW_SYMLINKS",
+            "DURABLE_PROJECT_INDICATORS",
+        ]);
 
         let yaml_content = r#"
 max_depth: 25
@@ -449,24 +460,6 @@ exclude_patterns:
 
         assert_eq!(config.max_depth, Some(25));
         assert_eq!(config.exclude_patterns, vec!["path_exclude"]);
-
-        // Restore env vars
-        match max_depth_backup {
-            Some(val) => env::set_var("DURABLE_MAX_DEPTH", val),
-            None => env::remove_var("DURABLE_MAX_DEPTH"),
-        }
-        match exclude_patterns_backup {
-            Some(val) => env::set_var("DURABLE_EXCLUDE_PATTERNS", val),
-            None => env::remove_var("DURABLE_EXCLUDE_PATTERNS"),
-        }
-        match follow_symlinks_backup {
-            Some(val) => env::set_var("DURABLE_FOLLOW_SYMLINKS", val),
-            None => env::remove_var("DURABLE_FOLLOW_SYMLINKS"),
-        }
-        match project_indicators_backup {
-            Some(val) => env::set_var("DURABLE_PROJECT_INDICATORS", val),
-            None => env::remove_var("DURABLE_PROJECT_INDICATORS"),
-        }
     }
 
     #[test]
@@ -492,17 +485,12 @@ exclude_patterns:
 
     #[test]
     fn test_load_from_env_invalid_values() {
-        // Backup existing env vars
-        let max_depth_backup = env::var("DURABLE_MAX_DEPTH").ok();
-        let follow_symlinks_backup = env::var("DURABLE_FOLLOW_SYMLINKS").ok();
-        let exclude_patterns_backup = env::var("DURABLE_EXCLUDE_PATTERNS").ok();
-        let project_indicators_backup = env::var("DURABLE_PROJECT_INDICATORS").ok();
-
-        // Clear any existing env vars
-        env::remove_var("DURABLE_MAX_DEPTH");
-        env::remove_var("DURABLE_FOLLOW_SYMLINKS");
-        env::remove_var("DURABLE_EXCLUDE_PATTERNS");
-        env::remove_var("DURABLE_PROJECT_INDICATORS");
+        let _guard = EnvGuard::new(&[
+            "DURABLE_MAX_DEPTH",
+            "DURABLE_FOLLOW_SYMLINKS",
+            "DURABLE_EXCLUDE_PATTERNS",
+            "DURABLE_PROJECT_INDICATORS",
+        ]);
 
         // Set invalid environment variables
         env::set_var("DURABLE_MAX_DEPTH", "not_a_number");
@@ -513,39 +501,16 @@ exclude_patterns:
         // Invalid values should be ignored, keeping defaults
         assert_eq!(config.max_depth, Some(10)); // default
         assert!(!config.follow_symlinks); // default
-
-        // Restore env vars
-        match max_depth_backup {
-            Some(val) => env::set_var("DURABLE_MAX_DEPTH", val),
-            None => env::remove_var("DURABLE_MAX_DEPTH"),
-        }
-        match follow_symlinks_backup {
-            Some(val) => env::set_var("DURABLE_FOLLOW_SYMLINKS", val),
-            None => env::remove_var("DURABLE_FOLLOW_SYMLINKS"),
-        }
-        match exclude_patterns_backup {
-            Some(val) => env::set_var("DURABLE_EXCLUDE_PATTERNS", val),
-            None => env::remove_var("DURABLE_EXCLUDE_PATTERNS"),
-        }
-        match project_indicators_backup {
-            Some(val) => env::set_var("DURABLE_PROJECT_INDICATORS", val),
-            None => env::remove_var("DURABLE_PROJECT_INDICATORS"),
-        }
     }
 
     #[test]
     fn test_config_precedence_env_over_file() {
-        // Backup existing env vars
-        let max_depth_backup = env::var("DURABLE_MAX_DEPTH").ok();
-        let exclude_patterns_backup = env::var("DURABLE_EXCLUDE_PATTERNS").ok();
-        let follow_symlinks_backup = env::var("DURABLE_FOLLOW_SYMLINKS").ok();
-        let project_indicators_backup = env::var("DURABLE_PROJECT_INDICATORS").ok();
-
-        // Clear any existing env vars
-        env::remove_var("DURABLE_MAX_DEPTH");
-        env::remove_var("DURABLE_EXCLUDE_PATTERNS");
-        env::remove_var("DURABLE_FOLLOW_SYMLINKS");
-        env::remove_var("DURABLE_PROJECT_INDICATORS");
+        let _guard = EnvGuard::new(&[
+            "DURABLE_MAX_DEPTH",
+            "DURABLE_EXCLUDE_PATTERNS",
+            "DURABLE_FOLLOW_SYMLINKS",
+            "DURABLE_PROJECT_INDICATORS",
+        ]);
 
         // Set valid env vars that should override file
         env::set_var("DURABLE_MAX_DEPTH", "20");
@@ -565,39 +530,16 @@ exclude_patterns:
         // Should load from env (overrides file)
         assert_eq!(config.max_depth, Some(20));
         assert_eq!(config.exclude_patterns, vec!["env_pattern"]);
-
-        // Restore env vars
-        match max_depth_backup {
-            Some(val) => env::set_var("DURABLE_MAX_DEPTH", val),
-            None => env::remove_var("DURABLE_MAX_DEPTH"),
-        }
-        match exclude_patterns_backup {
-            Some(val) => env::set_var("DURABLE_EXCLUDE_PATTERNS", val),
-            None => env::remove_var("DURABLE_EXCLUDE_PATTERNS"),
-        }
-        match follow_symlinks_backup {
-            Some(val) => env::set_var("DURABLE_FOLLOW_SYMLINKS", val),
-            None => env::remove_var("DURABLE_FOLLOW_SYMLINKS"),
-        }
-        match project_indicators_backup {
-            Some(val) => env::set_var("DURABLE_PROJECT_INDICATORS", val),
-            None => env::remove_var("DURABLE_PROJECT_INDICATORS"),
-        }
     }
 
     #[test]
     fn test_partial_config_file() {
-        // Backup existing env vars
-        let max_depth_backup = env::var("DURABLE_MAX_DEPTH").ok();
-        let exclude_patterns_backup = env::var("DURABLE_EXCLUDE_PATTERNS").ok();
-        let follow_symlinks_backup = env::var("DURABLE_FOLLOW_SYMLINKS").ok();
-        let project_indicators_backup = env::var("DURABLE_PROJECT_INDICATORS").ok();
-
-        // Clear any existing env vars
-        env::remove_var("DURABLE_MAX_DEPTH");
-        env::remove_var("DURABLE_EXCLUDE_PATTERNS");
-        env::remove_var("DURABLE_FOLLOW_SYMLINKS");
-        env::remove_var("DURABLE_PROJECT_INDICATORS");
+        let _guard = EnvGuard::new(&[
+            "DURABLE_MAX_DEPTH",
+            "DURABLE_EXCLUDE_PATTERNS",
+            "DURABLE_FOLLOW_SYMLINKS",
+            "DURABLE_PROJECT_INDICATORS",
+        ]);
 
         let yaml_content = r#"
 max_depth: 30
@@ -617,43 +559,16 @@ project_indicators:
             .exclude_patterns
             .contains(&"node_modules".to_string()));
         assert_eq!(config.project_indicators, vec!["custom_indicator"]);
-
-        // Restore env vars
-        match max_depth_backup {
-            Some(val) => env::set_var("DURABLE_MAX_DEPTH", val),
-            None => env::remove_var("DURABLE_MAX_DEPTH"),
-        }
-        match exclude_patterns_backup {
-            Some(val) => env::set_var("DURABLE_EXCLUDE_PATTERNS", val),
-            None => env::remove_var("DURABLE_EXCLUDE_PATTERNS"),
-        }
-        match follow_symlinks_backup {
-            Some(val) => env::set_var("DURABLE_FOLLOW_SYMLINKS", val),
-            None => env::remove_var("DURABLE_FOLLOW_SYMLINKS"),
-        }
-        match project_indicators_backup {
-            Some(val) => env::set_var("DURABLE_PROJECT_INDICATORS", val),
-            None => env::remove_var("DURABLE_PROJECT_INDICATORS"),
-        }
     }
 
     #[test]
     fn test_empty_config_file() {
-        // Backup existing env vars
-        let max_depth_backup = env::var("DURABLE_MAX_DEPTH").ok();
-        let exclude_patterns_backup = env::var("DURABLE_EXCLUDE_PATTERNS").ok();
-        let project_indicators_backup = env::var("DURABLE_PROJECT_INDICATORS").ok();
-        let follow_symlinks_backup = env::var("DURABLE_FOLLOW_SYMLINKS").ok();
-
-        // Clear all env vars first
-        env::remove_var("DURABLE_MAX_DEPTH");
-        env::remove_var("DURABLE_EXCLUDE_PATTERNS");
-        env::remove_var("DURABLE_PROJECT_INDICATORS");
-        env::remove_var("DURABLE_FOLLOW_SYMLINKS");
-
-        // Set env vars to defaults where needed
-        env::set_var("DURABLE_MAX_DEPTH", "10");
-        env::set_var("DURABLE_FOLLOW_SYMLINKS", "false");
+        let _guard = EnvGuard::new(&[
+            "DURABLE_MAX_DEPTH",
+            "DURABLE_EXCLUDE_PATTERNS",
+            "DURABLE_PROJECT_INDICATORS",
+            "DURABLE_FOLLOW_SYMLINKS",
+        ]);
 
         let yaml_content = "{}";
 
@@ -665,24 +580,6 @@ project_indicators:
         // Should use all defaults
         assert_eq!(config.max_depth, Some(10));
         assert!(!config.follow_symlinks);
-
-        // Restore env vars
-        match max_depth_backup {
-            Some(val) => env::set_var("DURABLE_MAX_DEPTH", val),
-            None => env::remove_var("DURABLE_MAX_DEPTH"),
-        }
-        match exclude_patterns_backup {
-            Some(val) => env::set_var("DURABLE_EXCLUDE_PATTERNS", val),
-            None => env::remove_var("DURABLE_EXCLUDE_PATTERNS"),
-        }
-        match project_indicators_backup {
-            Some(val) => env::set_var("DURABLE_PROJECT_INDICATORS", val),
-            None => env::remove_var("DURABLE_PROJECT_INDICATORS"),
-        }
-        match follow_symlinks_backup {
-            Some(val) => env::set_var("DURABLE_FOLLOW_SYMLINKS", val),
-            None => env::remove_var("DURABLE_FOLLOW_SYMLINKS"),
-        }
     }
 
     #[test]

@@ -2,13 +2,13 @@
 
 use std::path::PathBuf;
 
-use indicatif::{ProgressBar, ProgressStyle};
-use fuzzy_matcher::FuzzyMatcher;
-use dprojc_types::{ProjectType, ReportData, StatsData};
+use dprojc_docs::{DocsConfig, DocumentationGenerator};
 use dprojc_scanner::ProjectScanner;
-use dprojc_docs::{DocumentationGenerator, DocsConfig};
+use dprojc_types::{ProjectType, ReportData, StatsData};
+use fuzzy_matcher::FuzzyMatcher;
+use indicatif::{ProgressBar, ProgressStyle};
 
-use crate::output::{OutputFormatter, OutputFormat};
+use crate::output::{OutputFormat, OutputFormatter};
 use crate::CliRunner;
 
 impl CliRunner {
@@ -84,8 +84,12 @@ impl CliRunner {
         let formatter = OutputFormatter::new(format.clone());
 
         if self.verbose > 0 {
-            println!("Scanned {} directories, found {} projects, {} errors",
-                    total_dirs_scanned, all_projects.len(), total_errors);
+            println!(
+                "Scanned {} directories, found {} projects, {} errors",
+                total_dirs_scanned,
+                all_projects.len(),
+                total_errors
+            );
         }
 
         formatter.format_scan_results(&all_results)?;
@@ -269,7 +273,12 @@ impl CliRunner {
     }
 
     /// Run the clean command
-    pub async fn run_clean(&self, max_age_days: i64, dry_run: bool, check_paths: bool) -> anyhow::Result<()> {
+    pub async fn run_clean(
+        &self,
+        max_age_days: i64,
+        dry_run: bool,
+        check_paths: bool,
+    ) -> anyhow::Result<()> {
         if dry_run {
             println!("DRY RUN - No changes will be made");
         }
@@ -281,12 +290,13 @@ impl CliRunner {
         println!("  Total scans: {}", before_stats.total_scans);
         println!("  Total projects: {}", before_stats.total_projects);
 
-        let mut deleted_scans = 0;
-        let mut deleted_projects = 0;
         let mut deleted_missing_paths = 0;
 
         if dry_run {
-            println!("\nWould clean up scan results older than {} days", max_age_days);
+            println!(
+                "\nWould clean up scan results older than {} days",
+                max_age_days
+            );
             println!("Would remove orphaned projects");
 
             if check_paths {
@@ -301,10 +311,10 @@ impl CliRunner {
                 }
             }
         } else {
-            deleted_scans = self.database.delete_old_scan_results(
-                chrono::Utc::now() - chrono::Duration::days(max_age_days)
+            let deleted_scans = self.database.delete_old_scan_results(
+                chrono::Utc::now() - chrono::Duration::days(max_age_days),
             )?;
-            deleted_projects = self.database.cleanup_orphaned_projects(max_age_days)?;
+            let deleted_projects = self.database.cleanup_orphaned_projects(max_age_days)?;
 
             if check_paths {
                 let all_projects = self.database.get_all_projects()?;
@@ -323,7 +333,10 @@ impl CliRunner {
             println!("  Deleted {} old scan results", deleted_scans);
             println!("  Removed {} orphaned projects", deleted_projects);
             if check_paths {
-                println!("  Removed {} projects with non-existent paths", deleted_missing_paths);
+                println!(
+                    "  Removed {} projects with non-existent paths",
+                    deleted_missing_paths
+                );
             }
 
             let after_stats = self.database.get_scan_statistics()?;
@@ -383,7 +396,11 @@ impl CliRunner {
     }
 
     /// Run the TUI command
-    pub async fn run_tui(&self, max_display: Option<usize>, show_details: bool) -> anyhow::Result<()> {
+    pub async fn run_tui(
+        &self,
+        max_display: Option<usize>,
+        show_details: bool,
+    ) -> anyhow::Result<()> {
         use dprojc_tui::{run_tui_with_config, TuiConfig};
 
         let config = TuiConfig::load_with_overrides(max_display, Some(show_details))?;
@@ -397,7 +414,7 @@ impl CliRunner {
         max_age_hours: u64,
         dry_run: bool,
     ) -> anyhow::Result<()> {
-        use std::time::{SystemTime, Duration};
+        use std::time::{Duration, SystemTime};
         use walkdir::WalkDir;
 
         if dry_run {
@@ -407,8 +424,6 @@ impl CliRunner {
         let cutoff_time = SystemTime::now() - Duration::from_secs(max_age_hours * 3600);
         let mut cleaned_count = 0;
         let mut total_found = 0;
-
-
 
         println!("Scanning for Cargo.toml files in {} paths...", paths.len());
 
@@ -425,7 +440,9 @@ impl CliRunner {
 
                         // Check if any file in target/ has been modified recently
                         let mut should_clean = true;
-                        for target_entry in WalkDir::new(&target_dir).into_iter().filter_map(|e| e.ok()) {
+                        for target_entry in
+                            WalkDir::new(&target_dir).into_iter().filter_map(|e| e.ok())
+                        {
                             if let Ok(metadata) = target_entry.metadata() {
                                 // Only check files, not directories (directories get mtime updated when files are added)
                                 if metadata.is_file() {
@@ -438,8 +455,6 @@ impl CliRunner {
                                 }
                             }
                         }
-
-
 
                         if should_clean {
                             println!("Found old target directory: {}", target_dir.display());
@@ -473,20 +488,21 @@ impl CliRunner {
         }
 
         println!("\nSummary:");
-        println!("  Found {} Cargo projects with target/ directories", total_found);
+        println!(
+            "  Found {} Cargo projects with target/ directories",
+            total_found
+        );
         println!("  Cleaned {} old target directories", cleaned_count);
 
         Ok(())
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{Cli, Commands, OutputFormat};
-    use dprojc_types::{Project, ProjectType, ProjectIndicator};
+    use dprojc_types::{Project, ProjectIndicator, ProjectType};
     use std::path::PathBuf;
     use tempfile::tempdir;
 
@@ -556,7 +572,9 @@ mod tests {
             verbose: 0,
             config: None,
             database: Some(db_path),
-            command: Commands::Stats { format: OutputFormat::Table },
+            command: Commands::Stats {
+                format: OutputFormat::Table,
+            },
         };
 
         let runner = CliRunner::new(&cli).await;
@@ -608,25 +626,34 @@ mod tests {
         let matcher = fuzzy_matcher::skim::SkimMatcherV2::default();
 
         // Test exact match
-        let filtered: Vec<_> = projects.iter().filter(|p| {
-            let path_str = p.path.to_string_lossy();
-            matcher.fuzzy_match(&path_str, "rust").is_some()
-        }).collect();
+        let filtered: Vec<_> = projects
+            .iter()
+            .filter(|p| {
+                let path_str = p.path.to_string_lossy();
+                matcher.fuzzy_match(&path_str, "rust").is_some()
+            })
+            .collect();
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].project_type, ProjectType::Rust);
 
         // Test partial match
-        let filtered: Vec<_> = projects.iter().filter(|p| {
-            let path_str = p.path.to_string_lossy();
-            matcher.fuzzy_match(&path_str, "path").is_some()
-        }).collect();
+        let filtered: Vec<_> = projects
+            .iter()
+            .filter(|p| {
+                let path_str = p.path.to_string_lossy();
+                matcher.fuzzy_match(&path_str, "path").is_some()
+            })
+            .collect();
         assert_eq!(filtered.len(), 3);
 
         // Test no match
-        let filtered: Vec<_> = projects.iter().filter(|p| {
-            let path_str = p.path.to_string_lossy();
-            matcher.fuzzy_match(&path_str, "nonexistent").is_some()
-        }).collect();
+        let filtered: Vec<_> = projects
+            .iter()
+            .filter(|p| {
+                let path_str = p.path.to_string_lossy();
+                matcher.fuzzy_match(&path_str, "nonexistent").is_some()
+            })
+            .collect();
         assert_eq!(filtered.len(), 0);
     }
 
@@ -708,7 +735,7 @@ impl CliRunner {
     /// Run shell integration commands
     pub async fn run_shell(&mut self, command: &crate::ShellCommands) -> anyhow::Result<()> {
         use crate::ShellCommands;
-        use dprojc_shell::{ShellIntegration, ShellType, generate_completions};
+        use dprojc_shell::{generate_completions, ShellIntegration, ShellType};
 
         let db_path = dprojc_utils::default_db_path()?;
 

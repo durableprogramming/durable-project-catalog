@@ -707,8 +707,10 @@ mod tests {
         let deep_dir = temp_dir.path().join("level1").join("level2");
         fs::create_dir_all(&deep_dir).unwrap();
 
-        let mut config = ScanConfig::default();
-        config.max_depth = Some(1);
+        let config = ScanConfig {
+            max_depth: Some(1),
+            ..Default::default()
+        };
 
         // Walk from temp_dir, so level2 should be at depth 2
         let walker = walkdir::WalkDir::new(temp_dir.path());
@@ -729,7 +731,6 @@ mod tests {
         let walker = create_walker(temp_dir.path(), &config);
         // Just test that it creates a walker without panicking
         let _count = walker.into_iter().count();
-        assert!(true);
     }
 
     #[test]
