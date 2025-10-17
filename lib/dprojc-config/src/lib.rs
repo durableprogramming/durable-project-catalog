@@ -201,8 +201,9 @@ impl ConfigManager {
         let contents = fs::read_to_string(path)
             .map_err(|e| anyhow::anyhow!("Failed to read config file {}: {}", path.display(), e))?;
 
-        let config: ConfigFile = serde_yaml::from_str(&contents)
-            .map_err(|e| anyhow::anyhow!("Failed to parse config file {}: {}", path.display(), e))?;
+        let config: ConfigFile = serde_yaml::from_str(&contents).map_err(|e| {
+            anyhow::anyhow!("Failed to parse config file {}: {}", path.display(), e)
+        })?;
 
         Ok(Some(config))
     }
@@ -212,10 +213,16 @@ impl ConfigManager {
             config.max_depth = Some(max_depth);
         }
         if let Some(exclude_patterns) = file_config.exclude_patterns {
-            config.exclude_patterns = exclude_patterns.into_iter().filter(|s| !s.trim().is_empty()).collect();
+            config.exclude_patterns = exclude_patterns
+                .into_iter()
+                .filter(|s| !s.trim().is_empty())
+                .collect();
         }
         if let Some(project_indicators) = file_config.project_indicators {
-            config.project_indicators = project_indicators.into_iter().filter(|s| !s.trim().is_empty()).collect();
+            config.project_indicators = project_indicators
+                .into_iter()
+                .filter(|s| !s.trim().is_empty())
+                .collect();
         }
         if let Some(follow_symlinks) = file_config.follow_symlinks {
             config.follow_symlinks = follow_symlinks;
@@ -273,17 +280,23 @@ impl ConfigManager {
                 return Err(anyhow::anyhow!("max_depth must be greater than 0"));
             }
             if max_depth > 1000 {
-                return Err(anyhow::anyhow!("max_depth must be less than or equal to 1000"));
+                return Err(anyhow::anyhow!(
+                    "max_depth must be less than or equal to 1000"
+                ));
             }
         }
         for pattern in &config.exclude_patterns {
             if pattern.trim().is_empty() {
-                return Err(anyhow::anyhow!("exclude_patterns cannot contain empty or whitespace-only strings"));
+                return Err(anyhow::anyhow!(
+                    "exclude_patterns cannot contain empty or whitespace-only strings"
+                ));
             }
         }
         for indicator in &config.project_indicators {
             if indicator.trim().is_empty() {
-                return Err(anyhow::anyhow!("project_indicators cannot contain empty or whitespace-only strings"));
+                return Err(anyhow::anyhow!(
+                    "project_indicators cannot contain empty or whitespace-only strings"
+                ));
             }
         }
         Ok(())
@@ -300,7 +313,9 @@ mod tests {
     fn test_default_config() {
         let config = ScanConfig::default();
         assert_eq!(config.max_depth, Some(10));
-        assert!(config.exclude_patterns.contains(&"node_modules".to_string()));
+        assert!(config
+            .exclude_patterns
+            .contains(&"node_modules".to_string()));
         assert!(config.project_indicators.contains(&".git".to_string()));
         assert!(!config.follow_symlinks);
     }
@@ -327,7 +342,9 @@ mod tests {
 
         // Should use defaults for unset values
         assert_eq!(config.max_depth, Some(10));
-        assert!(config.exclude_patterns.contains(&"node_modules".to_string()));
+        assert!(config
+            .exclude_patterns
+            .contains(&"node_modules".to_string()));
         assert!(!config.follow_symlinks);
 
         // Restore env vars
@@ -363,11 +380,19 @@ follow_symlinks: true
         let mut temp_file = NamedTempFile::new().unwrap();
         write!(temp_file, "{}", yaml_content).unwrap();
 
-        let file_config = ConfigManager::load_config_file(temp_file.path()).unwrap().unwrap();
+        let file_config = ConfigManager::load_config_file(temp_file.path())
+            .unwrap()
+            .unwrap();
 
         assert_eq!(file_config.max_depth, Some(15));
-        assert_eq!(file_config.exclude_patterns, Some(vec!["test_exclude".to_string()]));
-        assert_eq!(file_config.project_indicators, Some(vec!["test_indicator".to_string()]));
+        assert_eq!(
+            file_config.exclude_patterns,
+            Some(vec!["test_exclude".to_string()])
+        );
+        assert_eq!(
+            file_config.project_indicators,
+            Some(vec!["test_indicator".to_string()])
+        );
         assert_eq!(file_config.follow_symlinks, Some(true));
     }
 
@@ -453,7 +478,10 @@ exclude_patterns:
 
         let result = ConfigManager::load_config_file(temp_file.path());
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Failed to parse config file"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Failed to parse config file"));
     }
 
     #[test]
@@ -585,7 +613,9 @@ project_indicators:
 
         assert_eq!(config.max_depth, Some(30));
         // exclude_patterns should keep defaults since not specified in file
-        assert!(config.exclude_patterns.contains(&"node_modules".to_string()));
+        assert!(config
+            .exclude_patterns
+            .contains(&"node_modules".to_string()));
         assert_eq!(config.project_indicators, vec!["custom_indicator"]);
 
         // Restore env vars

@@ -92,7 +92,8 @@ dpc-select() {
 }
 
 alias ji='dpc-select'
-"#.to_string()
+"#
+    .to_string()
 }
 
 fn generate_zsh_completions() -> String {
@@ -151,7 +152,8 @@ _dpc_record_pwd() {
     dpc shell record "$PWD" &>/dev/null &
 }
 add-zsh-hook chpwd _dpc_record_pwd
-"#.to_string()
+"#
+    .to_string()
 }
 
 fn generate_fish_completions() -> String {
@@ -195,7 +197,8 @@ function _dpc_record_pwd --on-variable PWD
     # This runs in the background and exits silently if not a project
     dpc shell record "$PWD" &>/dev/null &
 end
-"#.to_string()
+"#
+    .to_string()
 }
 
 #[cfg(test)]

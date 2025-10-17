@@ -5,7 +5,7 @@
 
 use anyhow::{Context, Result};
 use dprojc_db::ProjectDatabase;
-use dprojc_types::{Project, ProjectType, ProjectIndicator};
+use dprojc_types::{Project, ProjectIndicator, ProjectType};
 use std::path::{Path, PathBuf};
 
 mod completions;
@@ -20,8 +20,8 @@ pub struct ShellIntegration {
 impl ShellIntegration {
     /// Create a new shell integration with the given database path
     pub fn new<P: AsRef<Path>>(db_path: P) -> Result<Self> {
-        let db = ProjectDatabase::open(db_path.as_ref())
-            .context("Failed to open project database")?;
+        let db =
+            ProjectDatabase::open(db_path.as_ref()).context("Failed to open project database")?;
 
         Ok(Self { db })
     }
@@ -31,14 +31,18 @@ impl ShellIntegration {
     pub fn query(&self, pattern: &str, limit: usize) -> Result<Vec<PathBuf>> {
         if pattern.is_empty() {
             // Return frecent projects if no pattern specified
-            let frecent_projects = self.db.get_projects_by_frecency(limit)
+            let frecent_projects = self
+                .db
+                .get_projects_by_frecency(limit)
                 .context("Failed to get projects by frecency")?;
             return Ok(frecent_projects.into_iter().map(|p| p.path).collect());
         }
 
         // Get frecent projects first (limit to reasonable number for performance)
         let frecent_limit = std::cmp::min(limit * 10, 500);
-        let frecent_projects = self.db.get_projects_by_frecency(frecent_limit)
+        let frecent_projects = self
+            .db
+            .get_projects_by_frecency(frecent_limit)
             .context("Failed to get projects by frecency")?;
 
         // Filter frecent projects by pattern
@@ -53,13 +57,14 @@ impl ShellIntegration {
         if matching.len() < limit {
             // Use database search with limit for better performance
             let search_limit = (limit - matching.len()) * 3; // Get more than needed for filtering
-            let search_results = self.db.search_projects_by_path_limit(&pattern_lower, Some(search_limit))
+            let search_results = self
+                .db
+                .search_projects_by_path_limit(&pattern_lower, Some(search_limit))
                 .context("Failed to search projects")?;
 
             // Filter out projects we already have
-            let existing_paths: std::collections::HashSet<_> = matching.iter()
-                .map(|p| &p.path)
-                .collect();
+            let existing_paths: std::collections::HashSet<_> =
+                matching.iter().map(|p| &p.path).collect();
 
             let additional: Vec<_> = search_results
                 .into_iter()
@@ -86,7 +91,11 @@ impl ShellIntegration {
         // Match against individual path components (directories and filename)
         for component in path.components() {
             if let std::path::Component::Normal(name) = component {
-                if name.to_string_lossy().to_lowercase().contains(pattern_lower) {
+                if name
+                    .to_string_lossy()
+                    .to_lowercase()
+                    .contains(pattern_lower)
+                {
                     return true;
                 }
             }
@@ -98,7 +107,8 @@ impl ShellIntegration {
     /// Record a directory access (for frecency tracking)
     /// Returns true if the path was a project root and was recorded
     pub fn record_access<P: AsRef<Path>>(&self, path: P) -> Result<bool> {
-        self.db.record_access(path.as_ref())
+        self.db
+            .record_access(path.as_ref())
             .context("Failed to record directory access")
     }
 
@@ -110,14 +120,18 @@ impl ShellIntegration {
 
     /// Get all project paths (for shell completion)
     pub fn all_projects(&self) -> Result<Vec<PathBuf>> {
-        let projects = self.db.get_all_projects()
+        let projects = self
+            .db
+            .get_all_projects()
             .context("Failed to get all projects")?;
         Ok(projects.into_iter().map(|p| p.path).collect())
     }
 
     /// Check if a path is a cataloged project root
     pub fn is_project_root<P: AsRef<Path>>(&self, path: P) -> Result<bool> {
-        let project = self.db.get_project_by_path(path.as_ref())
+        let project = self
+            .db
+            .get_project_by_path(path.as_ref())
             .context("Failed to check if path is project root")?;
         Ok(project.is_some())
     }
@@ -132,7 +146,11 @@ mod tests {
     fn create_test_db() -> Result<(ProjectDatabase, PathBuf)> {
         static COUNTER: AtomicU32 = AtomicU32::new(0);
         let count = COUNTER.fetch_add(1, Ordering::SeqCst);
-        let temp_dir = std::env::temp_dir().join(format!("dprojc_shell_test_{}_{}", std::process::id(), count));
+        let temp_dir = std::env::temp_dir().join(format!(
+            "dprojc_shell_test_{}_{}",
+            std::process::id(),
+            count
+        ));
         std::fs::create_dir_all(&temp_dir)?;
         let db_path = temp_dir.join("test.db");
         let db = ProjectDatabase::open(&db_path)?;
@@ -225,8 +243,13 @@ mod tests {
         assert!(results.len() <= 3);
 
         // Should prioritize most accessed projects
-        let rust_app_pos = results.iter().position(|p| p.to_string_lossy().contains("rust-app"));
-        assert!(rust_app_pos.is_some(), "Most accessed project should be in results");
+        let rust_app_pos = results
+            .iter()
+            .position(|p| p.to_string_lossy().contains("rust-app"));
+        assert!(
+            rust_app_pos.is_some(),
+            "Most accessed project should be in results"
+        );
     }
 
     #[test]
@@ -283,7 +306,11 @@ mod tests {
         // Verify all paths are unique
         let mut paths = std::collections::HashSet::new();
         for path in &results {
-            assert!(paths.insert(path.clone()), "Duplicate path found: {:?}", path);
+            assert!(
+                paths.insert(path.clone()),
+                "Duplicate path found: {:?}",
+                path
+            );
         }
     }
 
@@ -295,7 +322,9 @@ mod tests {
         let shell = ShellIntegration::new(&db_path).unwrap();
 
         // Test existing project
-        let is_root = shell.is_project_root("/home/user/projects/rust-app").unwrap();
+        let is_root = shell
+            .is_project_root("/home/user/projects/rust-app")
+            .unwrap();
         assert!(is_root);
 
         // Test non-existing path
@@ -324,8 +353,13 @@ mod tests {
 
         // Verify frecency was updated by checking if the project appears in frecent results
         let results = shell.query("", 10).unwrap();
-        let node_web_found = results.iter().any(|p| p.to_string_lossy().contains("node-web"));
-        assert!(node_web_found, "Recently accessed project should appear in frecent results");
+        let node_web_found = results
+            .iter()
+            .any(|p| p.to_string_lossy().contains("node-web"));
+        assert!(
+            node_web_found,
+            "Recently accessed project should appear in frecent results"
+        );
     }
 
     #[test]
@@ -341,7 +375,11 @@ mod tests {
         // The rust-app should be first (accessed twice)
         if results.len() >= 2 {
             let first_path = results[0].to_string_lossy();
-            assert!(first_path.contains("rust-app"), "Most frecent project should be first, got: {:?}", first_path);
+            assert!(
+                first_path.contains("rust-app"),
+                "Most frecent project should be first, got: {:?}",
+                first_path
+            );
         }
     }
 

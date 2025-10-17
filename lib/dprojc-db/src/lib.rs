@@ -1,4 +1,7 @@
-use dprojc_types::{Project, ProjectIndicator, ProjectType, ScanError, ScanResult, ScanResultSummary, ScanStatistics};
+use dprojc_types::{
+    Project, ProjectIndicator, ProjectType, ScanError, ScanResult, ScanResultSummary,
+    ScanStatistics,
+};
 use dprojc_utils::default_db_path;
 use rusqlite::{params, Connection, OptionalExtension, Transaction};
 
@@ -127,7 +130,6 @@ mod schema {
 
     // Additional performance indexes
 
-
     pub const CREATE_SCAN_ERRORS_SCAN_RESULT_INDEX: &str = r#"
         CREATE INDEX IF NOT EXISTS idx_scan_errors_scan_result ON scan_errors (scan_result_id)
     "#;
@@ -187,12 +189,18 @@ impl ProjectDatabase {
         self.conn.execute(schema::CREATE_PROJECTS_PATH_INDEX, [])?;
         self.conn.execute(schema::CREATE_PROJECTS_TYPE_INDEX, [])?;
 
-        self.conn.execute(schema::CREATE_INDICATORS_PROJECT_INDEX, [])?;
-        self.conn.execute(schema::CREATE_SCAN_RESULTS_TIMESTAMP_INDEX, [])?;
-        self.conn.execute(schema::CREATE_SCAN_ERRORS_SCAN_RESULT_INDEX, [])?;
-        self.conn.execute(schema::CREATE_EXCLUDED_DIRS_SCAN_RESULT_INDEX, [])?;
-        self.conn.execute(schema::CREATE_SCAN_PROJECTS_SCAN_RESULT_INDEX, [])?;
-        self.conn.execute(schema::CREATE_SCAN_PROJECTS_PROJECT_INDEX, [])?;
+        self.conn
+            .execute(schema::CREATE_INDICATORS_PROJECT_INDEX, [])?;
+        self.conn
+            .execute(schema::CREATE_SCAN_RESULTS_TIMESTAMP_INDEX, [])?;
+        self.conn
+            .execute(schema::CREATE_SCAN_ERRORS_SCAN_RESULT_INDEX, [])?;
+        self.conn
+            .execute(schema::CREATE_EXCLUDED_DIRS_SCAN_RESULT_INDEX, [])?;
+        self.conn
+            .execute(schema::CREATE_SCAN_PROJECTS_SCAN_RESULT_INDEX, [])?;
+        self.conn
+            .execute(schema::CREATE_SCAN_PROJECTS_PROJECT_INDEX, [])?;
 
         // Run migrations
         self.run_migrations()?;
@@ -359,10 +367,24 @@ impl ProjectDatabase {
             let last_scanned_str: String = row.get(3)?;
 
             Ok((
-                row.get::<_, i64>(0)?, // id
+                row.get::<_, i64>(0)?,    // id
                 row.get::<_, String>(1)?, // path
-                serde_json::from_str(&project_type_json).map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))?,
-                chrono::DateTime::parse_from_rfc3339(&last_scanned_str).map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))?.with_timezone(&chrono::Utc),
+                serde_json::from_str(&project_type_json).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        0,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })?,
+                chrono::DateTime::parse_from_rfc3339(&last_scanned_str)
+                    .map_err(|e| {
+                        rusqlite::Error::FromSqlConversionFailure(
+                            0,
+                            rusqlite::types::Type::Text,
+                            Box::new(e),
+                        )
+                    })?
+                    .with_timezone(&chrono::Utc),
             ))
         })?;
 
@@ -371,12 +393,18 @@ impl ProjectDatabase {
 
             // Get indicators
             let mut indicators = Vec::new();
-            let mut indicator_stmt = self.conn.prepare(
-                "SELECT indicator_type FROM project_indicators WHERE project_id = ?",
-            )?;
+            let mut indicator_stmt = self
+                .conn
+                .prepare("SELECT indicator_type FROM project_indicators WHERE project_id = ?")?;
             let indicator_rows = indicator_stmt.query_map(params![id], |row| {
                 let indicator_json: String = row.get(0)?;
-                serde_json::from_str(&indicator_json).map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))
+                serde_json::from_str(&indicator_json).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        0,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })
             })?;
 
             for indicator_result in indicator_rows {
@@ -414,25 +442,57 @@ impl ProjectDatabase {
             let indicator_json: Option<String> = row.get(4)?;
 
             Ok((
-                row.get::<_, i64>(0)?, // id
+                row.get::<_, i64>(0)?,    // id
                 row.get::<_, String>(1)?, // path
-                serde_json::from_str(&project_type_json).map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))?,
-                chrono::DateTime::parse_from_rfc3339(&last_scanned_str).map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))?.with_timezone(&chrono::Utc),
+                serde_json::from_str(&project_type_json).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        0,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })?,
+                chrono::DateTime::parse_from_rfc3339(&last_scanned_str)
+                    .map_err(|e| {
+                        rusqlite::Error::FromSqlConversionFailure(
+                            0,
+                            rusqlite::types::Type::Text,
+                            Box::new(e),
+                        )
+                    })?
+                    .with_timezone(&chrono::Utc),
                 indicator_json,
             ))
         })?;
 
         // Group results by project (since JOIN creates one row per indicator)
-        let mut projects_map: std::collections::HashMap<String, (i64, ProjectType, chrono::DateTime<chrono::Utc>, Vec<ProjectIndicator>)> = std::collections::HashMap::new();
+        let mut projects_map: std::collections::HashMap<
+            String,
+            (
+                i64,
+                ProjectType,
+                chrono::DateTime<chrono::Utc>,
+                Vec<ProjectIndicator>,
+            ),
+        > = std::collections::HashMap::new();
 
         for row_result in rows {
             let (id, path_str, project_type, last_scanned, indicator_json) = row_result?;
 
-            let entry = projects_map.entry(path_str.clone()).or_insert((id, project_type, last_scanned, Vec::new()));
+            let entry = projects_map.entry(path_str.clone()).or_insert((
+                id,
+                project_type,
+                last_scanned,
+                Vec::new(),
+            ));
 
             if let Some(ind_json) = indicator_json {
-                let indicator: ProjectIndicator = serde_json::from_str(&ind_json)
-                    .map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))?;
+                let indicator: ProjectIndicator = serde_json::from_str(&ind_json).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        0,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })?;
                 entry.3.push(indicator);
             }
         }
@@ -440,12 +500,14 @@ impl ProjectDatabase {
         // Convert to Vec and sort by path
         let mut projects: Vec<Project> = projects_map
             .into_iter()
-            .map(|(path_str, (_, project_type, last_scanned, indicators))| Project {
-                path: std::path::PathBuf::from(path_str),
-                project_type,
-                indicators,
-                last_scanned,
-            })
+            .map(
+                |(path_str, (_, project_type, last_scanned, indicators))| Project {
+                    path: std::path::PathBuf::from(path_str),
+                    project_type,
+                    indicators,
+                    last_scanned,
+                },
+            )
             .collect();
 
         projects.sort_by(|a, b| a.path.cmp(&b.path));
@@ -456,10 +518,9 @@ impl ProjectDatabase {
     /// Delete a project by path
     pub fn delete_project_by_path<P: AsRef<Path>>(&self, path: P) -> Result<bool> {
         let path_str = path.as_ref().to_string_lossy();
-        let rows_affected = self.conn.execute(
-            "DELETE FROM projects WHERE path = ?",
-            params![path_str],
-        )?;
+        let rows_affected = self
+            .conn
+            .execute("DELETE FROM projects WHERE path = ?", params![path_str])?;
         Ok(rows_affected > 0)
     }
 
@@ -474,17 +535,32 @@ impl ProjectDatabase {
             "#,
         )?;
 
-        let project_iter = stmt.query_map(params![serde_json::to_string(project_type)?], |row| {
-            let project_type_json: String = row.get(2)?;
-            let last_scanned_str: String = row.get(3)?;
+        let project_iter =
+            stmt.query_map(params![serde_json::to_string(project_type)?], |row| {
+                let project_type_json: String = row.get(2)?;
+                let last_scanned_str: String = row.get(3)?;
 
-            Ok((
-                row.get::<_, i64>(0)?, // id
-                row.get::<_, String>(1)?, // path
-                serde_json::from_str(&project_type_json).map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))?,
-                chrono::DateTime::parse_from_rfc3339(&last_scanned_str).map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))?.with_timezone(&chrono::Utc),
-            ))
-        })?;
+                Ok((
+                    row.get::<_, i64>(0)?,    // id
+                    row.get::<_, String>(1)?, // path
+                    serde_json::from_str(&project_type_json).map_err(|e| {
+                        rusqlite::Error::FromSqlConversionFailure(
+                            0,
+                            rusqlite::types::Type::Text,
+                            Box::new(e),
+                        )
+                    })?,
+                    chrono::DateTime::parse_from_rfc3339(&last_scanned_str)
+                        .map_err(|e| {
+                            rusqlite::Error::FromSqlConversionFailure(
+                                0,
+                                rusqlite::types::Type::Text,
+                                Box::new(e),
+                            )
+                        })?
+                        .with_timezone(&chrono::Utc),
+                ))
+            })?;
 
         let mut projects = Vec::new();
         for row_result in project_iter {
@@ -492,12 +568,18 @@ impl ProjectDatabase {
 
             // Get indicators
             let mut indicators = Vec::new();
-            let mut indicator_stmt = self.conn.prepare(
-                "SELECT indicator_type FROM project_indicators WHERE project_id = ?",
-            )?;
+            let mut indicator_stmt = self
+                .conn
+                .prepare("SELECT indicator_type FROM project_indicators WHERE project_id = ?")?;
             let indicator_rows = indicator_stmt.query_map(params![id], |row| {
                 let indicator_json: String = row.get(0)?;
-                serde_json::from_str(&indicator_json).map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))
+                serde_json::from_str(&indicator_json).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        0,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })
             })?;
 
             for indicator_result in indicator_rows {
@@ -534,10 +616,24 @@ impl ProjectDatabase {
             let last_scanned_str: String = row.get(3)?;
 
             Ok((
-                row.get::<_, i64>(0)?, // id
+                row.get::<_, i64>(0)?,    // id
                 row.get::<_, String>(1)?, // path
-                serde_json::from_str(&project_type_json).map_err(|e| rusqlite::Error::FromSqlConversionFailure(2, rusqlite::types::Type::Text, Box::new(e)))?,
-                chrono::DateTime::parse_from_rfc3339(&last_scanned_str).map_err(|e| rusqlite::Error::FromSqlConversionFailure(3, rusqlite::types::Type::Text, Box::new(e)))?.with_timezone(&chrono::Utc),
+                serde_json::from_str(&project_type_json).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        2,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })?,
+                chrono::DateTime::parse_from_rfc3339(&last_scanned_str)
+                    .map_err(|e| {
+                        rusqlite::Error::FromSqlConversionFailure(
+                            3,
+                            rusqlite::types::Type::Text,
+                            Box::new(e),
+                        )
+                    })?
+                    .with_timezone(&chrono::Utc),
             ))
         })?;
 
@@ -547,12 +643,18 @@ impl ProjectDatabase {
 
             // Get indicators
             let mut indicators = Vec::new();
-            let mut indicator_stmt = self.conn.prepare(
-                "SELECT indicator_type FROM project_indicators WHERE project_id = ?",
-            )?;
+            let mut indicator_stmt = self
+                .conn
+                .prepare("SELECT indicator_type FROM project_indicators WHERE project_id = ?")?;
             let indicator_rows = indicator_stmt.query_map(params![id], |row| {
                 let indicator_json: String = row.get(0)?;
-                serde_json::from_str(&indicator_json).map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))
+                serde_json::from_str(&indicator_json).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        0,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })
             })?;
 
             for indicator_result in indicator_rows {
@@ -573,7 +675,9 @@ impl ProjectDatabase {
     }
 
     /// Get project counts by type
-    pub fn get_project_counts_by_type(&self) -> Result<std::collections::HashMap<ProjectType, usize>> {
+    pub fn get_project_counts_by_type(
+        &self,
+    ) -> Result<std::collections::HashMap<ProjectType, usize>> {
         let mut stmt = self.conn.prepare(
             r#"
             SELECT project_type, COUNT(*)
@@ -587,7 +691,13 @@ impl ProjectDatabase {
             let count: i64 = row.get(1)?;
 
             Ok((
-                serde_json::from_str(&project_type_json).map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))?,
+                serde_json::from_str(&project_type_json).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        0,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })?,
                 count as usize,
             ))
         })?;
@@ -607,7 +717,11 @@ impl ProjectDatabase {
     }
 
     /// Search projects by path pattern with optional limit
-    pub fn search_projects_by_path_limit(&self, pattern: &str, limit: Option<usize>) -> Result<Vec<Project>> {
+    pub fn search_projects_by_path_limit(
+        &self,
+        pattern: &str,
+        limit: Option<usize>,
+    ) -> Result<Vec<Project>> {
         let like_pattern = format!("%{}%", pattern);
 
         let query = if let Some(lim) = limit {
@@ -629,7 +743,8 @@ impl ProjectDatabase {
             LEFT JOIN project_indicators pi ON p.id = pi.project_id
             WHERE p.path LIKE ?
             ORDER BY LENGTH(p.path), p.path, pi.indicator_type
-            "#.to_string()
+            "#
+            .to_string()
         };
 
         let mut stmt = self.conn.prepare(&query)?;
@@ -640,16 +755,38 @@ impl ProjectDatabase {
             let indicator_json: Option<String> = row.get(4)?;
 
             Ok((
-                row.get::<_, i64>(0)?, // id
+                row.get::<_, i64>(0)?,    // id
                 row.get::<_, String>(1)?, // path
-                serde_json::from_str(&project_type_json).map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))?,
-                chrono::DateTime::parse_from_rfc3339(&last_scanned_str).map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))?.with_timezone(&chrono::Utc),
+                serde_json::from_str(&project_type_json).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        0,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })?,
+                chrono::DateTime::parse_from_rfc3339(&last_scanned_str)
+                    .map_err(|e| {
+                        rusqlite::Error::FromSqlConversionFailure(
+                            0,
+                            rusqlite::types::Type::Text,
+                            Box::new(e),
+                        )
+                    })?
+                    .with_timezone(&chrono::Utc),
                 indicator_json,
             ))
         })?;
 
         // Group results by project
-        let mut projects_map: std::collections::HashMap<String, (i64, ProjectType, chrono::DateTime<chrono::Utc>, Vec<ProjectIndicator>)> = std::collections::HashMap::new();
+        let mut projects_map: std::collections::HashMap<
+            String,
+            (
+                i64,
+                ProjectType,
+                chrono::DateTime<chrono::Utc>,
+                Vec<ProjectIndicator>,
+            ),
+        > = std::collections::HashMap::new();
         let mut project_order: Vec<String> = Vec::new();
 
         for row_result in rows {
@@ -657,12 +794,20 @@ impl ProjectDatabase {
 
             if !projects_map.contains_key(&path_str) {
                 project_order.push(path_str.clone());
-                projects_map.insert(path_str.clone(), (id, project_type, last_scanned, Vec::new()));
+                projects_map.insert(
+                    path_str.clone(),
+                    (id, project_type, last_scanned, Vec::new()),
+                );
             }
 
             if let Some(ind_json) = indicator_json {
-                let indicator: ProjectIndicator = serde_json::from_str(&ind_json)
-                    .map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))?;
+                let indicator: ProjectIndicator = serde_json::from_str(&ind_json).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        0,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })?;
                 if let Some(entry) = projects_map.get_mut(&path_str) {
                     entry.3.push(indicator);
                 }
@@ -680,12 +825,14 @@ impl ProjectDatabase {
         let projects: Vec<Project> = project_order
             .into_iter()
             .filter_map(|path_str| {
-                projects_map.remove(&path_str).map(|(_, project_type, last_scanned, indicators)| Project {
-                    path: std::path::PathBuf::from(path_str),
-                    project_type,
-                    indicators,
-                    last_scanned,
-                })
+                projects_map
+                    .remove(&path_str)
+                    .map(|(_, project_type, last_scanned, indicators)| Project {
+                        path: std::path::PathBuf::from(path_str),
+                        project_type,
+                        indicators,
+                        last_scanned,
+                    })
             })
             .collect();
 
@@ -729,10 +876,7 @@ impl ProjectDatabase {
         for excluded_dir in &scan_result.excluded_dirs {
             tx.execute(
                 "INSERT INTO excluded_dirs (scan_result_id, dir_path) VALUES (?, ?)",
-                params![
-                    scan_result_id,
-                    excluded_dir.to_string_lossy()
-                ],
+                params![scan_result_id, excluded_dir.to_string_lossy()],
             )?;
         }
 
@@ -808,12 +952,18 @@ impl ProjectDatabase {
             Ok(ScanResultSummary {
                 id: row.get(0)?,
                 scan_timestamp: chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>(1)?)
-                    .map_err(|e| rusqlite::Error::FromSqlConversionFailure(1, rusqlite::types::Type::Text, Box::new(e)))?
+                    .map_err(|e| {
+                        rusqlite::Error::FromSqlConversionFailure(
+                            1,
+                            rusqlite::types::Type::Text,
+                            Box::new(e),
+                        )
+                    })?
                     .with_timezone(&chrono::Utc),
                 root_path: std::path::PathBuf::from(row.get::<_, String>(2)?),
                 dirs_scanned: row.get::<_, i64>(3)? as usize,
                 scan_duration_ms: row.get::<_, i64>(4)? as u64,
-                error_count: 0, // Will be filled below
+                error_count: 0,         // Will be filled below
                 excluded_dirs_count: 0, // Will be filled below
             })
         })?;
@@ -862,8 +1012,6 @@ impl ProjectDatabase {
             Err(e) => return Err(e.into()),
         };
 
-
-
         // Get errors
         let mut errors = Vec::new();
         let mut error_stmt = self.conn.prepare(
@@ -876,7 +1024,13 @@ impl ProjectDatabase {
 
             Ok(ScanError {
                 path: std::path::PathBuf::from(error_path),
-                error_type: serde_json::from_str(&error_type_json).map_err(|e| rusqlite::Error::FromSqlConversionFailure(1, rusqlite::types::Type::Text, Box::new(e)))?,
+                error_type: serde_json::from_str(&error_type_json).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        1,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })?,
                 message: error_message,
             })
         })?;
@@ -887,9 +1041,9 @@ impl ProjectDatabase {
 
         // Get excluded directories
         let mut excluded_dirs = Vec::new();
-        let mut excluded_stmt = self.conn.prepare(
-            "SELECT dir_path FROM excluded_dirs WHERE scan_result_id = ?",
-        )?;
+        let mut excluded_stmt = self
+            .conn
+            .prepare("SELECT dir_path FROM excluded_dirs WHERE scan_result_id = ?")?;
         let excluded_rows = excluded_stmt.query_map(params![scan_result_id], |row| {
             let dir_path: String = row.get(0)?;
             Ok(std::path::PathBuf::from(dir_path))
@@ -914,10 +1068,24 @@ impl ProjectDatabase {
             let last_scanned_str: String = row.get(3)?;
 
             Ok((
-                row.get::<_, i64>(0)?, // id
+                row.get::<_, i64>(0)?,    // id
                 row.get::<_, String>(1)?, // path
-                serde_json::from_str(&project_type_json).map_err(|e| rusqlite::Error::FromSqlConversionFailure(2, rusqlite::types::Type::Text, Box::new(e)))?,
-                chrono::DateTime::parse_from_rfc3339(&last_scanned_str).map_err(|e| rusqlite::Error::FromSqlConversionFailure(3, rusqlite::types::Type::Text, Box::new(e)))?.with_timezone(&chrono::Utc),
+                serde_json::from_str(&project_type_json).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        2,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })?,
+                chrono::DateTime::parse_from_rfc3339(&last_scanned_str)
+                    .map_err(|e| {
+                        rusqlite::Error::FromSqlConversionFailure(
+                            3,
+                            rusqlite::types::Type::Text,
+                            Box::new(e),
+                        )
+                    })?
+                    .with_timezone(&chrono::Utc),
             ))
         })?;
 
@@ -926,12 +1094,18 @@ impl ProjectDatabase {
 
             // Get indicators for this project
             let mut indicators = Vec::new();
-            let mut indicator_stmt = self.conn.prepare(
-                "SELECT indicator_type FROM project_indicators WHERE project_id = ?",
-            )?;
+            let mut indicator_stmt = self
+                .conn
+                .prepare("SELECT indicator_type FROM project_indicators WHERE project_id = ?")?;
             let indicator_rows = indicator_stmt.query_map(params![id], |row| {
                 let indicator_json: String = row.get(0)?;
-                serde_json::from_str(&indicator_json).map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))
+                serde_json::from_str(&indicator_json).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        0,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })
             })?;
 
             for indicator_result in indicator_rows {
@@ -962,17 +1136,13 @@ impl ProjectDatabase {
 
     /// Get scan statistics
     pub fn get_scan_statistics(&self) -> Result<ScanStatistics> {
-        let total_scans: i64 = self.conn.query_row(
-            "SELECT COUNT(*) FROM scan_results",
-            [],
-            |row| row.get(0),
-        )?;
+        let total_scans: i64 =
+            self.conn
+                .query_row("SELECT COUNT(*) FROM scan_results", [], |row| row.get(0))?;
 
-        let total_projects: i64 = self.conn.query_row(
-            "SELECT COUNT(*) FROM projects",
-            [],
-            |row| row.get(0),
-        )?;
+        let total_projects: i64 =
+            self.conn
+                .query_row("SELECT COUNT(*) FROM projects", [], |row| row.get(0))?;
 
         let total_dirs_scanned: i64 = self.conn.query_row(
             "SELECT COALESCE(SUM(dirs_scanned), 0) FROM scan_results",
@@ -980,22 +1150,25 @@ impl ProjectDatabase {
             |row| row.get(0),
         )?;
 
-        let total_errors: i64 = self.conn.query_row(
-            "SELECT COUNT(*) FROM scan_errors",
-            [],
-            |row| row.get(0),
-        )?;
+        let total_errors: i64 =
+            self.conn
+                .query_row("SELECT COUNT(*) FROM scan_errors", [], |row| row.get(0))?;
 
-        let last_scan_timestamp: Option<String> = self.conn.query_row(
-            "SELECT scan_timestamp FROM scan_results ORDER BY scan_timestamp DESC LIMIT 1",
-            [],
-            |row| row.get(0),
-        ).ok();
+        let last_scan_timestamp: Option<String> = self
+            .conn
+            .query_row(
+                "SELECT scan_timestamp FROM scan_results ORDER BY scan_timestamp DESC LIMIT 1",
+                [],
+                |row| row.get(0),
+            )
+            .ok();
 
         let last_scan = if let Some(ts_str) = last_scan_timestamp {
-            Some(chrono::DateTime::parse_from_rfc3339(&ts_str)
-                .map_err(|e| DatabaseError::Path(format!("Invalid timestamp: {}", e)))?
-                .with_timezone(&chrono::Utc))
+            Some(
+                chrono::DateTime::parse_from_rfc3339(&ts_str)
+                    .map_err(|e| DatabaseError::Path(format!("Invalid timestamp: {}", e)))?
+                    .with_timezone(&chrono::Utc),
+            )
         } else {
             None
         };
@@ -1019,7 +1192,10 @@ impl ProjectDatabase {
     }
 
     /// Delete scan results older than the specified timestamp
-    pub fn delete_old_scan_results(&self, before_timestamp: chrono::DateTime<chrono::Utc>) -> Result<usize> {
+    pub fn delete_old_scan_results(
+        &self,
+        before_timestamp: chrono::DateTime<chrono::Utc>,
+    ) -> Result<usize> {
         let rows_affected = self.conn.execute(
             "DELETE FROM scan_results WHERE scan_timestamp < ?",
             params![before_timestamp.to_rfc3339()],
@@ -1089,7 +1265,8 @@ impl ProjectDatabase {
 
             let sql = format!("SELECT * FROM {}", table);
             let mut stmt = self.conn.prepare(&sql)?;
-            let column_names: Vec<String> = stmt.column_names().iter().map(|s| s.to_string()).collect();
+            let column_names: Vec<String> =
+                stmt.column_names().iter().map(|s| s.to_string()).collect();
 
             let rows = stmt.query_map([], |row| {
                 let mut values = Vec::new();
@@ -1102,15 +1279,23 @@ impl ProjectDatabase {
 
             for row_result in rows {
                 let values = row_result?;
-                let value_strs: Vec<String> = values.iter().map(|v| match v {
-                    rusqlite::types::Value::Null => "NULL".to_string(),
-                    rusqlite::types::Value::Integer(i) => i.to_string(),
-                    rusqlite::types::Value::Real(r) => r.to_string(),
-                    rusqlite::types::Value::Text(t) => format!("'{}'", t.replace('\'', "''")),
-                    rusqlite::types::Value::Blob(b) => format!("X'{}'", hex::encode(b)),
-                }).collect();
+                let value_strs: Vec<String> = values
+                    .iter()
+                    .map(|v| match v {
+                        rusqlite::types::Value::Null => "NULL".to_string(),
+                        rusqlite::types::Value::Integer(i) => i.to_string(),
+                        rusqlite::types::Value::Real(r) => r.to_string(),
+                        rusqlite::types::Value::Text(t) => format!("'{}'", t.replace('\'', "''")),
+                        rusqlite::types::Value::Blob(b) => format!("X'{}'", hex::encode(b)),
+                    })
+                    .collect();
 
-                writeln!(file, "INSERT INTO {} VALUES ({});", table, value_strs.join(", "))?;
+                writeln!(
+                    file,
+                    "INSERT INTO {} VALUES ({});",
+                    table,
+                    value_strs.join(", ")
+                )?;
             }
             writeln!(file)?;
         }
@@ -1142,14 +1327,19 @@ impl ProjectDatabase {
         ];
 
         for table in &tables {
-            self.conn.execute(&format!("DROP TABLE IF EXISTS {}", table), [])?;
+            self.conn
+                .execute(&format!("DROP TABLE IF EXISTS {}", table), [])?;
         }
 
         Ok(())
     }
 
     /// Check if a path has been scanned recently
-    pub fn has_path_been_scanned_recently<P: AsRef<Path>>(&self, path: P, cutoff_time: chrono::DateTime<chrono::Utc>) -> Result<bool> {
+    pub fn has_path_been_scanned_recently<P: AsRef<Path>>(
+        &self,
+        path: P,
+        cutoff_time: chrono::DateTime<chrono::Utc>,
+    ) -> Result<bool> {
         let path_str = path.as_ref().to_string_lossy();
         let count: i64 = self.conn.query_row(
             "SELECT COUNT(*) FROM scan_results WHERE root_path = ? AND scan_timestamp > ?",
@@ -1229,16 +1419,38 @@ impl ProjectDatabase {
             let indicator_json: Option<String> = row.get(4)?;
 
             Ok((
-                row.get::<_, i64>(0)?, // id
+                row.get::<_, i64>(0)?,    // id
                 row.get::<_, String>(1)?, // path
-                serde_json::from_str(&project_type_json).map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))?,
-                chrono::DateTime::parse_from_rfc3339(&last_scanned_str).map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))?.with_timezone(&chrono::Utc),
+                serde_json::from_str(&project_type_json).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        0,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })?,
+                chrono::DateTime::parse_from_rfc3339(&last_scanned_str)
+                    .map_err(|e| {
+                        rusqlite::Error::FromSqlConversionFailure(
+                            0,
+                            rusqlite::types::Type::Text,
+                            Box::new(e),
+                        )
+                    })?
+                    .with_timezone(&chrono::Utc),
                 indicator_json,
             ))
         })?;
 
         // Group results by project (since JOIN creates multiple rows per project)
-        let mut projects_map: std::collections::HashMap<String, (i64, ProjectType, chrono::DateTime<chrono::Utc>, Vec<ProjectIndicator>)> = std::collections::HashMap::new();
+        let mut projects_map: std::collections::HashMap<
+            String,
+            (
+                i64,
+                ProjectType,
+                chrono::DateTime<chrono::Utc>,
+                Vec<ProjectIndicator>,
+            ),
+        > = std::collections::HashMap::new();
         let mut project_order: Vec<String> = Vec::new();
 
         for row_result in rows {
@@ -1246,12 +1458,20 @@ impl ProjectDatabase {
 
             if !projects_map.contains_key(&path_str) {
                 project_order.push(path_str.clone());
-                projects_map.insert(path_str.clone(), (id, project_type, last_scanned, Vec::new()));
+                projects_map.insert(
+                    path_str.clone(),
+                    (id, project_type, last_scanned, Vec::new()),
+                );
             }
 
             if let Some(ind_json) = indicator_json {
-                let indicator: ProjectIndicator = serde_json::from_str(&ind_json)
-                    .map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))?;
+                let indicator: ProjectIndicator = serde_json::from_str(&ind_json).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        0,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })?;
                 if let Some(entry) = projects_map.get_mut(&path_str) {
                     entry.3.push(indicator);
                 }
@@ -1267,12 +1487,14 @@ impl ProjectDatabase {
         let projects: Vec<Project> = project_order
             .into_iter()
             .filter_map(|path_str| {
-                projects_map.remove(&path_str).map(|(_, project_type, last_scanned, indicators)| Project {
-                    path: std::path::PathBuf::from(path_str),
-                    project_type,
-                    indicators,
-                    last_scanned,
-                })
+                projects_map
+                    .remove(&path_str)
+                    .map(|(_, project_type, last_scanned, indicators)| Project {
+                        path: std::path::PathBuf::from(path_str),
+                        project_type,
+                        indicators,
+                        last_scanned,
+                    })
             })
             .collect();
 
@@ -1284,45 +1506,46 @@ impl ProjectDatabase {
         let path_str = path.as_ref().to_string_lossy().to_string();
         let now = chrono::Utc::now().timestamp();
 
-        let score = self.conn.query_row(
-            "SELECT frecency_score, last_accessed FROM projects WHERE path = ?1",
-            params![path_str],
-            |row| {
-                let current_score: f64 = row.get(0)?;
-                let last_accessed: Option<i64> = row.get(1)?;
+        let score = self
+            .conn
+            .query_row(
+                "SELECT frecency_score, last_accessed FROM projects WHERE path = ?1",
+                params![path_str],
+                |row| {
+                    let current_score: f64 = row.get(0)?;
+                    let last_accessed: Option<i64> = row.get(1)?;
 
-                // Apply time decay
-                let decayed_score = if let Some(last_access) = last_accessed {
-                    let time_diff = (now - last_access) as f64;
-                    let days_diff = time_diff / 86400.0;
-                    let half_life_days = 30.0;
-                    let decay_factor = 0.5_f64.powf(days_diff / half_life_days);
-                    current_score * decay_factor
-                } else {
-                    current_score
-                };
+                    // Apply time decay
+                    let decayed_score = if let Some(last_access) = last_accessed {
+                        let time_diff = (now - last_access) as f64;
+                        let days_diff = time_diff / 86400.0;
+                        let half_life_days = 30.0;
+                        let decay_factor = 0.5_f64.powf(days_diff / half_life_days);
+                        current_score * decay_factor
+                    } else {
+                        current_score
+                    };
 
-                Ok(decayed_score)
-            },
-        ).optional()?;
+                    Ok(decayed_score)
+                },
+            )
+            .optional()?;
 
         Ok(score)
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use dprojc_types::ScanErrorType;
 
-
     fn create_test_db() -> Result<ProjectDatabase> {
         use std::sync::atomic::{AtomicU32, Ordering};
         static COUNTER: AtomicU32 = AtomicU32::new(0);
         let count = COUNTER.fetch_add(1, Ordering::SeqCst);
-        let temp_dir = std::env::temp_dir().join(format!("dprojc_test_{}_{}", std::process::id(), count));
+        let temp_dir =
+            std::env::temp_dir().join(format!("dprojc_test_{}_{}", std::process::id(), count));
         std::fs::create_dir_all(&temp_dir)?;
         let db_path = temp_dir.join("test.db");
         ProjectDatabase::open(&db_path)
@@ -1339,7 +1562,8 @@ mod tests {
         let db = create_test_db()?;
 
         // Check that tables exist
-        let tables: Vec<String> = db.conn
+        let tables: Vec<String> = db
+            .conn
             .prepare("SELECT name FROM sqlite_master WHERE type='table'")?
             .query_map([], |row| row.get(0))?
             .collect::<std::result::Result<Vec<String>, rusqlite::Error>>()
@@ -1730,15 +1954,24 @@ mod tests {
         db.store_scan_result(&scan_result)?;
 
         // Check if path has been scanned recently (within 1 hour)
-        let recent = db.has_path_been_scanned_recently("/test/path", chrono::Utc::now() - chrono::Duration::hours(1))?;
+        let recent = db.has_path_been_scanned_recently(
+            "/test/path",
+            chrono::Utc::now() - chrono::Duration::hours(1),
+        )?;
         assert!(recent);
 
         // Check if path has been scanned in the far past (should be false)
-        let not_recent = db.has_path_been_scanned_recently("/test/path", chrono::Utc::now() + chrono::Duration::hours(1))?;
+        let not_recent = db.has_path_been_scanned_recently(
+            "/test/path",
+            chrono::Utc::now() + chrono::Duration::hours(1),
+        )?;
         assert!(!not_recent);
 
         // Check non-existent path
-        let nonexistent = db.has_path_been_scanned_recently("/nonexistent", chrono::Utc::now() - chrono::Duration::hours(1))?;
+        let nonexistent = db.has_path_been_scanned_recently(
+            "/nonexistent",
+            chrono::Utc::now() - chrono::Duration::hours(1),
+        )?;
         assert!(!nonexistent);
 
         Ok(())
@@ -1957,5 +2190,4 @@ mod tests {
 
         Ok(())
     }
-
 }

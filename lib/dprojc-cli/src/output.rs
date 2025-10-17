@@ -1,9 +1,9 @@
 //! Output formatting utilities
 
-use std::io::{self, Write};
 use comfy_table::Table;
-use dprojc_types::{Project, ScanResult, StatsData, ReportData};
+use dprojc_types::{Project, ReportData, ScanResult, StatsData};
 use dprojc_utils::format_path_display;
+use std::io::{self, Write};
 
 /// Output format enum
 #[derive(Clone, Debug, clap::ValueEnum)]
@@ -30,7 +30,11 @@ impl OutputFormatter {
         self.format_projects_to_writer(projects, &mut io::stdout())
     }
 
-    pub fn format_projects_to_writer<W: Write>(&self, projects: &[Project], writer: &mut W) -> anyhow::Result<()> {
+    pub fn format_projects_to_writer<W: Write>(
+        &self,
+        projects: &[Project],
+        writer: &mut W,
+    ) -> anyhow::Result<()> {
         match self.format {
             OutputFormat::Table => self.format_projects_table(projects, writer),
             OutputFormat::Json => self.format_projects_json(projects, writer),
@@ -42,7 +46,11 @@ impl OutputFormatter {
         self.format_scan_results_to_writer(results, &mut io::stdout())
     }
 
-    pub fn format_scan_results_to_writer<W: Write>(&self, results: &[ScanResult], writer: &mut W) -> anyhow::Result<()> {
+    pub fn format_scan_results_to_writer<W: Write>(
+        &self,
+        results: &[ScanResult],
+        writer: &mut W,
+    ) -> anyhow::Result<()> {
         match self.format {
             OutputFormat::Table => self.format_scan_results_table(results, writer),
             OutputFormat::Json => self.format_scan_results_json(results, writer),
@@ -54,7 +62,11 @@ impl OutputFormatter {
         self.format_stats_to_writer(stats, &mut io::stdout())
     }
 
-    pub fn format_stats_to_writer<W: Write>(&self, stats: &StatsData, writer: &mut W) -> anyhow::Result<()> {
+    pub fn format_stats_to_writer<W: Write>(
+        &self,
+        stats: &StatsData,
+        writer: &mut W,
+    ) -> anyhow::Result<()> {
         match self.format {
             OutputFormat::Table => self.format_stats_table(stats, writer),
             OutputFormat::Json => self.format_stats_json(stats, writer),
@@ -66,7 +78,11 @@ impl OutputFormatter {
         self.format_report_to_writer(report, &mut io::stdout())
     }
 
-    pub fn format_report_to_writer<W: Write>(&self, report: &ReportData, writer: &mut W) -> anyhow::Result<()> {
+    pub fn format_report_to_writer<W: Write>(
+        &self,
+        report: &ReportData,
+        writer: &mut W,
+    ) -> anyhow::Result<()> {
         match self.format {
             OutputFormat::Table => self.format_report_table(report, writer),
             OutputFormat::Json => self.format_report_json(report, writer),
@@ -76,24 +92,25 @@ impl OutputFormatter {
 }
 
 impl OutputFormatter {
-    fn format_projects_table<W: Write>(&self, projects: &[Project], writer: &mut W) -> anyhow::Result<()> {
+    fn format_projects_table<W: Write>(
+        &self,
+        projects: &[Project],
+        writer: &mut W,
+    ) -> anyhow::Result<()> {
         if projects.is_empty() {
             writeln!(writer, "No projects found.")?;
             return Ok(());
         }
 
         let mut table = Table::new();
-        table.set_header(vec![
-            "Path",
-            "Type",
-            "Indicators",
-            "Last Scanned"
-        ]);
+        table.set_header(vec!["Path", "Type", "Indicators", "Last Scanned"]);
 
         for project in projects {
             let path = format_path_display(&project.path);
             let project_type = format!("{}", project.project_type);
-            let indicators: Vec<String> = project.indicators.iter()
+            let indicators: Vec<String> = project
+                .indicators
+                .iter()
                 .map(|i| format!("{}", i))
                 .collect();
             let indicators_str = indicators.join(", ");
@@ -111,14 +128,22 @@ impl OutputFormatter {
         Ok(())
     }
 
-    fn format_scan_results_table<W: Write>(&self, results: &[ScanResult], writer: &mut W) -> anyhow::Result<()> {
+    fn format_scan_results_table<W: Write>(
+        &self,
+        results: &[ScanResult],
+        writer: &mut W,
+    ) -> anyhow::Result<()> {
         for result in results {
             writeln!(writer, "Scan Results for: {}", result.root_path.display())?;
             writeln!(writer, "Directories scanned: {}", result.dirs_scanned)?;
             writeln!(writer, "Projects found: {}", result.projects.len())?;
             writeln!(writer, "Errors: {}", result.errors.len())?;
             if !result.excluded_dirs.is_empty() {
-                writeln!(writer, "Excluded directories: {}", result.excluded_dirs.len())?;
+                writeln!(
+                    writer,
+                    "Excluded directories: {}",
+                    result.excluded_dirs.len()
+                )?;
                 for dir in &result.excluded_dirs {
                     writeln!(writer, "  {}", format_path_display(dir))?;
                 }
@@ -144,17 +169,36 @@ impl OutputFormatter {
         Ok(())
     }
 
-    fn format_stats_table<W: Write>(&self, stats: &StatsData, writer: &mut W) -> anyhow::Result<()> {
+    fn format_stats_table<W: Write>(
+        &self,
+        stats: &StatsData,
+        writer: &mut W,
+    ) -> anyhow::Result<()> {
         let mut table = Table::new();
         table.set_header(vec!["Statistic", "Value"]);
 
-        table.add_row(vec!["Total Scans", &stats.statistics.total_scans.to_string()]);
-        table.add_row(vec!["Total Projects", &stats.statistics.total_projects.to_string()]);
-        table.add_row(vec!["Total Directories Scanned", &stats.statistics.total_dirs_scanned.to_string()]);
-        table.add_row(vec!["Total Errors", &stats.statistics.total_errors.to_string()]);
+        table.add_row(vec![
+            "Total Scans",
+            &stats.statistics.total_scans.to_string(),
+        ]);
+        table.add_row(vec![
+            "Total Projects",
+            &stats.statistics.total_projects.to_string(),
+        ]);
+        table.add_row(vec![
+            "Total Directories Scanned",
+            &stats.statistics.total_dirs_scanned.to_string(),
+        ]);
+        table.add_row(vec![
+            "Total Errors",
+            &stats.statistics.total_errors.to_string(),
+        ]);
 
         if let Some(last_scan) = stats.statistics.last_scan_timestamp {
-            table.add_row(vec!["Last Scan", &last_scan.format("%Y-%m-%d %H:%M:%S").to_string()]);
+            table.add_row(vec![
+                "Last Scan",
+                &last_scan.format("%Y-%m-%d %H:%M:%S").to_string(),
+            ]);
         } else {
             table.add_row(vec!["Last Scan", "Never"]);
         }
@@ -178,13 +222,21 @@ impl OutputFormatter {
         Ok(())
     }
 
-    fn format_projects_json<W: Write>(&self, projects: &[Project], writer: &mut W) -> anyhow::Result<()> {
+    fn format_projects_json<W: Write>(
+        &self,
+        projects: &[Project],
+        writer: &mut W,
+    ) -> anyhow::Result<()> {
         serde_json::to_writer_pretty(&mut *writer, projects)?;
         writeln!(writer)?;
         Ok(())
     }
 
-    fn format_scan_results_json<W: Write>(&self, results: &[ScanResult], writer: &mut W) -> anyhow::Result<()> {
+    fn format_scan_results_json<W: Write>(
+        &self,
+        results: &[ScanResult],
+        writer: &mut W,
+    ) -> anyhow::Result<()> {
         serde_json::to_writer_pretty(&mut *writer, results)?;
         writeln!(writer)?;
         Ok(())
@@ -196,12 +248,20 @@ impl OutputFormatter {
         Ok(())
     }
 
-    fn format_projects_yaml<W: Write>(&self, projects: &[Project], writer: &mut W) -> anyhow::Result<()> {
+    fn format_projects_yaml<W: Write>(
+        &self,
+        projects: &[Project],
+        writer: &mut W,
+    ) -> anyhow::Result<()> {
         serde_yaml::to_writer(writer, projects)?;
         Ok(())
     }
 
-    fn format_scan_results_yaml<W: Write>(&self, results: &[ScanResult], writer: &mut W) -> anyhow::Result<()> {
+    fn format_scan_results_yaml<W: Write>(
+        &self,
+        results: &[ScanResult],
+        writer: &mut W,
+    ) -> anyhow::Result<()> {
         serde_yaml::to_writer(writer, results)?;
         Ok(())
     }
@@ -211,8 +271,16 @@ impl OutputFormatter {
         Ok(())
     }
 
-    fn format_report_table<W: Write>(&self, report: &ReportData, writer: &mut W) -> anyhow::Result<()> {
-        writeln!(writer, "Report generated at: {}", report.generated_at.format("%Y-%m-%d %H:%M:%S"))?;
+    fn format_report_table<W: Write>(
+        &self,
+        report: &ReportData,
+        writer: &mut W,
+    ) -> anyhow::Result<()> {
+        writeln!(
+            writer,
+            "Report generated at: {}",
+            report.generated_at.format("%Y-%m-%d %H:%M:%S")
+        )?;
         writeln!(writer)?;
 
         if !report.projects.is_empty() {
@@ -231,11 +299,17 @@ impl OutputFormatter {
 
             table.add_row(vec!["Total Scans", &stats.total_scans.to_string()]);
             table.add_row(vec!["Total Projects", &stats.total_projects.to_string()]);
-            table.add_row(vec!["Total Directories Scanned", &stats.total_dirs_scanned.to_string()]);
+            table.add_row(vec![
+                "Total Directories Scanned",
+                &stats.total_dirs_scanned.to_string(),
+            ]);
             table.add_row(vec!["Total Errors", &stats.total_errors.to_string()]);
 
             if let Some(last_scan) = stats.last_scan_timestamp {
-                table.add_row(vec!["Last Scan", &last_scan.format("%Y-%m-%d %H:%M:%S").to_string()]);
+                table.add_row(vec![
+                    "Last Scan",
+                    &last_scan.format("%Y-%m-%d %H:%M:%S").to_string(),
+                ]);
             } else {
                 table.add_row(vec!["Last Scan", "Never"]);
             }
@@ -246,13 +320,21 @@ impl OutputFormatter {
         Ok(())
     }
 
-    fn format_report_json<W: Write>(&self, report: &ReportData, writer: &mut W) -> anyhow::Result<()> {
+    fn format_report_json<W: Write>(
+        &self,
+        report: &ReportData,
+        writer: &mut W,
+    ) -> anyhow::Result<()> {
         serde_json::to_writer_pretty(&mut *writer, report)?;
         writeln!(writer)?;
         Ok(())
     }
 
-    fn format_report_yaml<W: Write>(&self, report: &ReportData, writer: &mut W) -> anyhow::Result<()> {
+    fn format_report_yaml<W: Write>(
+        &self,
+        report: &ReportData,
+        writer: &mut W,
+    ) -> anyhow::Result<()> {
         serde_yaml::to_writer(writer, report)?;
         Ok(())
     }
@@ -261,7 +343,7 @@ impl OutputFormatter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use dprojc_types::{Project, ProjectType, ProjectIndicator};
+    use dprojc_types::{Project, ProjectIndicator, ProjectType};
     use std::path::PathBuf;
 
     fn create_test_projects() -> Vec<Project> {
@@ -298,20 +380,21 @@ mod tests {
     }
 
     fn create_test_scan_results() -> Vec<ScanResult> {
-        vec![
-            ScanResult {
-                root_path: PathBuf::from("/test/root"),
-                projects: create_test_projects(),
-                excluded_dirs: vec![PathBuf::from("/test/root/node_modules"), PathBuf::from("/test/root/.git")],
-                errors: vec![dprojc_types::ScanError {
-                    path: PathBuf::from("/test/root/forbidden"),
-                    error_type: dprojc_types::ScanErrorType::PermissionDenied,
-                    message: "Permission denied".to_string(),
-                }],
-                dirs_scanned: 10,
-                scan_duration_ms: 500,
-            }
-        ]
+        vec![ScanResult {
+            root_path: PathBuf::from("/test/root"),
+            projects: create_test_projects(),
+            excluded_dirs: vec![
+                PathBuf::from("/test/root/node_modules"),
+                PathBuf::from("/test/root/.git"),
+            ],
+            errors: vec![dprojc_types::ScanError {
+                path: PathBuf::from("/test/root/forbidden"),
+                error_type: dprojc_types::ScanErrorType::PermissionDenied,
+                message: "Permission denied".to_string(),
+            }],
+            dirs_scanned: 10,
+            scan_duration_ms: 500,
+        }]
     }
 
     #[test]
@@ -320,7 +403,9 @@ mod tests {
         let projects = create_test_projects();
 
         let mut output = Vec::new();
-        formatter.format_projects_to_writer(&projects, &mut output).unwrap();
+        formatter
+            .format_projects_to_writer(&projects, &mut output)
+            .unwrap();
 
         let output_str = String::from_utf8(output).unwrap();
         assert!(output_str.contains("rust_project"));
@@ -335,7 +420,9 @@ mod tests {
         let projects = create_test_projects();
 
         let mut output = Vec::new();
-        formatter.format_projects_to_writer(&projects, &mut output).unwrap();
+        formatter
+            .format_projects_to_writer(&projects, &mut output)
+            .unwrap();
 
         let output_str = String::from_utf8(output).unwrap();
         assert!(output_str.contains("rust_project"));
@@ -350,7 +437,9 @@ mod tests {
         let projects = create_test_projects();
 
         let mut output = Vec::new();
-        formatter.format_projects_to_writer(&projects, &mut output).unwrap();
+        formatter
+            .format_projects_to_writer(&projects, &mut output)
+            .unwrap();
 
         let output_str = String::from_utf8(output).unwrap();
         assert!(output_str.contains("rust_project"));
@@ -363,7 +452,9 @@ mod tests {
         let projects: Vec<Project> = vec![];
 
         let mut output = Vec::new();
-        formatter.format_projects_to_writer(&projects, &mut output).unwrap();
+        formatter
+            .format_projects_to_writer(&projects, &mut output)
+            .unwrap();
 
         let output_str = String::from_utf8(output).unwrap();
         assert!(output_str.contains("No projects found"));
@@ -375,7 +466,9 @@ mod tests {
         let stats = create_test_stats_data();
 
         let mut output = Vec::new();
-        formatter.format_stats_to_writer(&stats, &mut output).unwrap();
+        formatter
+            .format_stats_to_writer(&stats, &mut output)
+            .unwrap();
 
         let output_str = String::from_utf8(output).unwrap();
         assert!(output_str.contains("Total Scans"));
@@ -390,7 +483,9 @@ mod tests {
         let results = create_test_scan_results();
 
         let mut output = Vec::new();
-        formatter.format_scan_results_to_writer(&results, &mut output).unwrap();
+        formatter
+            .format_scan_results_to_writer(&results, &mut output)
+            .unwrap();
 
         let output_str = String::from_utf8(output).unwrap();
         assert!(output_str.contains("Scan Results for: /test/root"));
@@ -411,7 +506,9 @@ mod tests {
         let results = create_test_scan_results();
 
         let mut output = Vec::new();
-        formatter.format_scan_results_to_writer(&results, &mut output).unwrap();
+        formatter
+            .format_scan_results_to_writer(&results, &mut output)
+            .unwrap();
 
         let output_str = String::from_utf8(output).unwrap();
         assert!(output_str.contains("/test/root"));
@@ -426,7 +523,9 @@ mod tests {
         let results = create_test_scan_results();
 
         let mut output = Vec::new();
-        formatter.format_scan_results_to_writer(&results, &mut output).unwrap();
+        formatter
+            .format_scan_results_to_writer(&results, &mut output)
+            .unwrap();
 
         let output_str = String::from_utf8(output).unwrap();
         assert!(output_str.contains("/test/root"));
@@ -454,7 +553,9 @@ mod tests {
         let report = create_test_report_data();
 
         let mut output = Vec::new();
-        formatter.format_report_to_writer(&report, &mut output).unwrap();
+        formatter
+            .format_report_to_writer(&report, &mut output)
+            .unwrap();
 
         let output_str = String::from_utf8(output).unwrap();
         assert!(output_str.contains("Report generated at:"));
@@ -471,7 +572,9 @@ mod tests {
         let report = create_test_report_data();
 
         let mut output = Vec::new();
-        formatter.format_report_to_writer(&report, &mut output).unwrap();
+        formatter
+            .format_report_to_writer(&report, &mut output)
+            .unwrap();
 
         let output_str = String::from_utf8(output).unwrap();
         assert!(output_str.contains("projects"));
@@ -487,7 +590,9 @@ mod tests {
         let report = create_test_report_data();
 
         let mut output = Vec::new();
-        formatter.format_report_to_writer(&report, &mut output).unwrap();
+        formatter
+            .format_report_to_writer(&report, &mut output)
+            .unwrap();
 
         let output_str = String::from_utf8(output).unwrap();
         assert!(output_str.contains("projects:"));

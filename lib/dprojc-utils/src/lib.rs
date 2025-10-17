@@ -5,9 +5,9 @@
 
 use dprojc_types::{ProjectIndicator, ScanConfig};
 use regex::Regex;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use walkdir::{DirEntry, WalkDir};
-use std::collections::HashSet;
 
 /// Check if a directory should be excluded based on patterns
 ///
@@ -35,8 +35,8 @@ pub fn should_exclude_dir(dir_name: &str, exclude_patterns: &[String]) -> bool {
             // Convert glob pattern to regex by escaping everything first, then converting wildcards
             let escaped = regex::escape(pattern);
             let regex_pattern = escaped
-                .replace(r"\*", ".*")  // Convert escaped * back to .*
-                .replace(r"\?", ".");  // Convert escaped ? to .
+                .replace(r"\*", ".*") // Convert escaped * back to .*
+                .replace(r"\?", "."); // Convert escaped ? to .
 
             if let Ok(regex) = Regex::new(&format!("^{}$", regex_pattern)) {
                 regex.is_match(dir_name)
@@ -144,7 +144,10 @@ pub fn create_walker(root: &Path, config: &ScanConfig) -> WalkDir {
 /// Get the default database path
 pub fn default_db_path() -> anyhow::Result<PathBuf> {
     let home = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?;
-    let db_dir = home.join(".local").join("durable").join("durable-project-catalog");
+    let db_dir = home
+        .join(".local")
+        .join("durable")
+        .join("durable-project-catalog");
     std::fs::create_dir_all(&db_dir)?;
     Ok(db_dir.join("catalog.db"))
 }
@@ -169,7 +172,10 @@ pub fn validate_scan_path(path: &Path) -> anyhow::Result<()> {
         return Err(anyhow::anyhow!("Path does not exist: {}", path.display()));
     }
     if !path.is_dir() {
-        return Err(anyhow::anyhow!("Path is not a directory: {}", path.display()));
+        return Err(anyhow::anyhow!(
+            "Path is not a directory: {}",
+            path.display()
+        ));
     }
     Ok(())
 }
@@ -203,7 +209,13 @@ pub fn get_relative_path(from: &Path, to: &Path) -> anyhow::Result<PathBuf> {
 
     to.strip_prefix(&from)
         .map(|p| p.to_path_buf())
-        .map_err(|_| anyhow::anyhow!("Cannot make {} relative to {}", to.display(), from.display()))
+        .map_err(|_| {
+            anyhow::anyhow!(
+                "Cannot make {} relative to {}",
+                to.display(),
+                from.display()
+            )
+        })
 }
 
 /// Safely join multiple path components
@@ -222,7 +234,9 @@ pub fn safe_join_paths(base: &Path, components: &[&str]) -> PathBuf {
 /// Check if a file has a specific extension (case-insensitive)
 pub fn has_extension(path: &Path, extensions: &[&str]) -> bool {
     if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-        extensions.iter().any(|&expected| ext.eq_ignore_ascii_case(expected))
+        extensions
+            .iter()
+            .any(|&expected| ext.eq_ignore_ascii_case(expected))
     } else {
         false
     }
@@ -263,9 +277,7 @@ pub fn validate_scan_config(config: &ScanConfig) -> anyhow::Result<()> {
         if pattern.contains('*') || pattern.contains('?') {
             // Test if the glob pattern can be converted to a valid regex
             let escaped = regex::escape(pattern);
-            let regex_pattern = escaped
-                .replace(r"\*", ".*")
-                .replace(r"\?", ".");
+            let regex_pattern = escaped.replace(r"\*", ".*").replace(r"\?", ".");
             if Regex::new(&format!("^{}$", regex_pattern)).is_err() {
                 return Err(anyhow::anyhow!("Invalid exclude pattern: {}", pattern));
             }
@@ -356,7 +368,8 @@ pub fn get_current_dir() -> anyhow::Result<PathBuf> {
 /// Expand tilde (~) in path strings
 pub fn expand_tilde(path: &str) -> anyhow::Result<PathBuf> {
     if let Some(stripped) = path.strip_prefix('~') {
-        let home = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?;
+        let home =
+            dirs::home_dir().ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?;
         let relative_path = stripped.strip_prefix('/').unwrap_or(stripped);
         Ok(home.join(relative_path))
     } else {
@@ -372,17 +385,28 @@ mod tests {
 
     #[test]
     fn test_should_exclude_dir() {
-        let exclude_patterns = vec!["node_modules".to_string(), "*.tmp".to_string(), "test?".to_string()];
+        let exclude_patterns = vec![
+            "node_modules".to_string(),
+            "*.tmp".to_string(),
+            "test?".to_string(),
+        ];
         assert!(should_exclude_dir("node_modules", &exclude_patterns));
         assert!(should_exclude_dir("test.tmp", &exclude_patterns));
         assert!(should_exclude_dir("test1", &exclude_patterns));
         assert!(!should_exclude_dir("src", &exclude_patterns));
-        assert!(!should_exclude_dir("node_modules_backup", &exclude_patterns));
+        assert!(!should_exclude_dir(
+            "node_modules_backup",
+            &exclude_patterns
+        ));
     }
 
     #[test]
     fn test_should_exclude_dir_complex_patterns() {
-        let patterns = vec!["*.log".to_string(), "temp_*".to_string(), "cache".to_string()];
+        let patterns = vec![
+            "*.log".to_string(),
+            "temp_*".to_string(),
+            "cache".to_string(),
+        ];
         assert!(should_exclude_dir("debug.log", &patterns));
         assert!(should_exclude_dir("temp_files", &patterns));
         assert!(should_exclude_dir("cache", &patterns));
@@ -577,9 +601,18 @@ mod tests {
 
     #[test]
     fn test_get_project_type_priority() {
-        assert_eq!(get_project_type_priority(&dprojc_types::ProjectType::Rust), 10);
-        assert_eq!(get_project_type_priority(&dprojc_types::ProjectType::NodeJs), 9);
-        assert_eq!(get_project_type_priority(&dprojc_types::ProjectType::Unknown), 0);
+        assert_eq!(
+            get_project_type_priority(&dprojc_types::ProjectType::Rust),
+            10
+        );
+        assert_eq!(
+            get_project_type_priority(&dprojc_types::ProjectType::NodeJs),
+            9
+        );
+        assert_eq!(
+            get_project_type_priority(&dprojc_types::ProjectType::Unknown),
+            0
+        );
     }
 
     #[test]
@@ -593,13 +626,20 @@ mod tests {
     fn test_expand_tilde() {
         // Test tilde expansion
         let test_path = "~/test";
-        assert!(test_path.starts_with('~'), "Test path should start with tilde");
+        assert!(
+            test_path.starts_with('~'),
+            "Test path should start with tilde"
+        );
         let result = expand_tilde(test_path);
         assert!(result.is_ok());
         let expanded = result.unwrap();
         if let Some(home) = dirs::home_dir() {
             let expected = home.join("test");
-            assert_eq!(expanded, expected, "Tilde should be expanded to home directory. Got: {:?}, Expected: {:?}", expanded, expected);
+            assert_eq!(
+                expanded, expected,
+                "Tilde should be expanded to home directory. Got: {:?}, Expected: {:?}",
+                expanded, expected
+            );
         } else {
             // If no home directory, should return the original path
             assert_eq!(expanded, PathBuf::from("~/test"));
@@ -696,7 +736,10 @@ mod tests {
     fn test_default_db_path() {
         let db_path = default_db_path().unwrap();
         assert!(db_path.ends_with("catalog.db"));
-        assert!(db_path.parent().unwrap().ends_with(".local/durable/durable-project-catalog"));
+        assert!(db_path
+            .parent()
+            .unwrap()
+            .ends_with(".local/durable/durable-project-catalog"));
     }
 
     #[test]

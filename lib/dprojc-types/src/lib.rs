@@ -105,7 +105,13 @@ pub struct ScanError {
 
 impl std::fmt::Display for ScanError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {} ({})", self.path.display(), self.message, self.error_type)
+        write!(
+            f,
+            "{}: {} ({})",
+            self.path.display(),
+            self.message,
+            self.error_type
+        )
     }
 }
 
@@ -265,44 +271,122 @@ mod tests {
     #[test]
     fn test_project_type_from_indicators() {
         // Test single indicators
-        assert_eq!(ProjectType::from_indicators(&[ProjectIndicator::CargoToml]), ProjectType::Rust);
-        assert_eq!(ProjectType::from_indicators(&[ProjectIndicator::PackageJson]), ProjectType::NodeJs);
-        assert_eq!(ProjectType::from_indicators(&[ProjectIndicator::Gemfile]), ProjectType::Ruby);
-        assert_eq!(ProjectType::from_indicators(&[ProjectIndicator::Gemspec]), ProjectType::Ruby);
-        assert_eq!(ProjectType::from_indicators(&[ProjectIndicator::PyprojectToml]), ProjectType::Python);
-        assert_eq!(ProjectType::from_indicators(&[ProjectIndicator::RequirementsTxt]), ProjectType::Python);
-        assert_eq!(ProjectType::from_indicators(&[ProjectIndicator::GoMod]), ProjectType::Go);
-        assert_eq!(ProjectType::from_indicators(&[ProjectIndicator::PomXml]), ProjectType::Java);
-        assert_eq!(ProjectType::from_indicators(&[ProjectIndicator::GitDirectory]), ProjectType::Git);
-        assert_eq!(ProjectType::from_indicators(&[ProjectIndicator::DevenvNix]), ProjectType::Nix);
+        assert_eq!(
+            ProjectType::from_indicators(&[ProjectIndicator::CargoToml]),
+            ProjectType::Rust
+        );
+        assert_eq!(
+            ProjectType::from_indicators(&[ProjectIndicator::PackageJson]),
+            ProjectType::NodeJs
+        );
+        assert_eq!(
+            ProjectType::from_indicators(&[ProjectIndicator::Gemfile]),
+            ProjectType::Ruby
+        );
+        assert_eq!(
+            ProjectType::from_indicators(&[ProjectIndicator::Gemspec]),
+            ProjectType::Ruby
+        );
+        assert_eq!(
+            ProjectType::from_indicators(&[ProjectIndicator::PyprojectToml]),
+            ProjectType::Python
+        );
+        assert_eq!(
+            ProjectType::from_indicators(&[ProjectIndicator::RequirementsTxt]),
+            ProjectType::Python
+        );
+        assert_eq!(
+            ProjectType::from_indicators(&[ProjectIndicator::GoMod]),
+            ProjectType::Go
+        );
+        assert_eq!(
+            ProjectType::from_indicators(&[ProjectIndicator::PomXml]),
+            ProjectType::Java
+        );
+        assert_eq!(
+            ProjectType::from_indicators(&[ProjectIndicator::GitDirectory]),
+            ProjectType::Git
+        );
+        assert_eq!(
+            ProjectType::from_indicators(&[ProjectIndicator::DevenvNix]),
+            ProjectType::Nix
+        );
 
         // Test precedence (CargoToml should take precedence over others)
-        assert_eq!(ProjectType::from_indicators(&[ProjectIndicator::PackageJson, ProjectIndicator::CargoToml]), ProjectType::Rust);
-        assert_eq!(ProjectType::from_indicators(&[ProjectIndicator::GitDirectory, ProjectIndicator::PackageJson]), ProjectType::NodeJs);
+        assert_eq!(
+            ProjectType::from_indicators(&[
+                ProjectIndicator::PackageJson,
+                ProjectIndicator::CargoToml
+            ]),
+            ProjectType::Rust
+        );
+        assert_eq!(
+            ProjectType::from_indicators(&[
+                ProjectIndicator::GitDirectory,
+                ProjectIndicator::PackageJson
+            ]),
+            ProjectType::NodeJs
+        );
 
         // Test unknown/custom indicators
-        assert_eq!(ProjectType::from_indicators(&[ProjectIndicator::Custom("unknown".to_string())]), ProjectType::Unknown);
+        assert_eq!(
+            ProjectType::from_indicators(&[ProjectIndicator::Custom("unknown".to_string())]),
+            ProjectType::Unknown
+        );
 
         // Test empty indicators
         assert_eq!(ProjectType::from_indicators(&[]), ProjectType::Unknown);
 
         // Test multiple indicators of same type
-        assert_eq!(ProjectType::from_indicators(&[ProjectIndicator::Gemfile, ProjectIndicator::Gemspec]), ProjectType::Ruby);
+        assert_eq!(
+            ProjectType::from_indicators(&[ProjectIndicator::Gemfile, ProjectIndicator::Gemspec]),
+            ProjectType::Ruby
+        );
     }
 
     #[test]
     fn test_project_indicator_from_path_name() {
         // Test known indicators
-        assert_eq!(ProjectIndicator::from_path_name(".git"), Some(ProjectIndicator::GitDirectory));
-        assert_eq!(ProjectIndicator::from_path_name("package.json"), Some(ProjectIndicator::PackageJson));
-        assert_eq!(ProjectIndicator::from_path_name("Gemfile"), Some(ProjectIndicator::Gemfile));
-        assert_eq!(ProjectIndicator::from_path_name(".gemspec"), Some(ProjectIndicator::Gemspec));
-        assert_eq!(ProjectIndicator::from_path_name("Cargo.toml"), Some(ProjectIndicator::CargoToml));
-        assert_eq!(ProjectIndicator::from_path_name("pyproject.toml"), Some(ProjectIndicator::PyprojectToml));
-        assert_eq!(ProjectIndicator::from_path_name("go.mod"), Some(ProjectIndicator::GoMod));
-        assert_eq!(ProjectIndicator::from_path_name("requirements.txt"), Some(ProjectIndicator::RequirementsTxt));
-        assert_eq!(ProjectIndicator::from_path_name("pom.xml"), Some(ProjectIndicator::PomXml));
-        assert_eq!(ProjectIndicator::from_path_name("devenv.nix"), Some(ProjectIndicator::DevenvNix));
+        assert_eq!(
+            ProjectIndicator::from_path_name(".git"),
+            Some(ProjectIndicator::GitDirectory)
+        );
+        assert_eq!(
+            ProjectIndicator::from_path_name("package.json"),
+            Some(ProjectIndicator::PackageJson)
+        );
+        assert_eq!(
+            ProjectIndicator::from_path_name("Gemfile"),
+            Some(ProjectIndicator::Gemfile)
+        );
+        assert_eq!(
+            ProjectIndicator::from_path_name(".gemspec"),
+            Some(ProjectIndicator::Gemspec)
+        );
+        assert_eq!(
+            ProjectIndicator::from_path_name("Cargo.toml"),
+            Some(ProjectIndicator::CargoToml)
+        );
+        assert_eq!(
+            ProjectIndicator::from_path_name("pyproject.toml"),
+            Some(ProjectIndicator::PyprojectToml)
+        );
+        assert_eq!(
+            ProjectIndicator::from_path_name("go.mod"),
+            Some(ProjectIndicator::GoMod)
+        );
+        assert_eq!(
+            ProjectIndicator::from_path_name("requirements.txt"),
+            Some(ProjectIndicator::RequirementsTxt)
+        );
+        assert_eq!(
+            ProjectIndicator::from_path_name("pom.xml"),
+            Some(ProjectIndicator::PomXml)
+        );
+        assert_eq!(
+            ProjectIndicator::from_path_name("devenv.nix"),
+            Some(ProjectIndicator::DevenvNix)
+        );
 
         // Test unknown names
         assert_eq!(ProjectIndicator::from_path_name("unknown.txt"), None);
@@ -315,7 +399,9 @@ mod tests {
         let config = ScanConfig::default();
 
         assert_eq!(config.max_depth, Some(10));
-        assert!(config.exclude_patterns.contains(&"node_modules".to_string()));
+        assert!(config
+            .exclude_patterns
+            .contains(&"node_modules".to_string()));
         assert!(config.exclude_patterns.contains(&"vendor".to_string()));
         assert!(config.exclude_patterns.contains(&".git".to_string()));
         assert!(config.exclude_patterns.contains(&"__pycache__".to_string()));
@@ -325,15 +411,25 @@ mod tests {
         assert_eq!(config.exclude_patterns.len(), 7);
 
         assert!(config.project_indicators.contains(&".git".to_string()));
-        assert!(config.project_indicators.contains(&"package.json".to_string()));
+        assert!(config
+            .project_indicators
+            .contains(&"package.json".to_string()));
         assert!(config.project_indicators.contains(&"Gemfile".to_string()));
         assert!(config.project_indicators.contains(&".gemspec".to_string()));
-        assert!(config.project_indicators.contains(&"Cargo.toml".to_string()));
-        assert!(config.project_indicators.contains(&"pyproject.toml".to_string()));
+        assert!(config
+            .project_indicators
+            .contains(&"Cargo.toml".to_string()));
+        assert!(config
+            .project_indicators
+            .contains(&"pyproject.toml".to_string()));
         assert!(config.project_indicators.contains(&"go.mod".to_string()));
         assert!(config.project_indicators.contains(&"pom.xml".to_string()));
-        assert!(config.project_indicators.contains(&"devenv.nix".to_string()));
-        assert!(config.project_indicators.contains(&"requirements.txt".to_string()));
+        assert!(config
+            .project_indicators
+            .contains(&"devenv.nix".to_string()));
+        assert!(config
+            .project_indicators
+            .contains(&"requirements.txt".to_string()));
         assert_eq!(config.project_indicators.len(), 10);
 
         assert_eq!(config.follow_symlinks, false);
@@ -380,8 +476,14 @@ mod tests {
         assert_eq!(deserialized.excluded_dirs, scan_result.excluded_dirs);
         assert_eq!(deserialized.errors.len(), 1);
         assert_eq!(deserialized.errors[0].path, scan_result.errors[0].path);
-        assert_eq!(deserialized.errors[0].error_type, scan_result.errors[0].error_type);
-        assert_eq!(deserialized.errors[0].message, scan_result.errors[0].message);
+        assert_eq!(
+            deserialized.errors[0].error_type,
+            scan_result.errors[0].error_type
+        );
+        assert_eq!(
+            deserialized.errors[0].message,
+            scan_result.errors[0].message
+        );
         assert_eq!(deserialized.dirs_scanned, scan_result.dirs_scanned);
         assert_eq!(deserialized.scan_duration_ms, scan_result.scan_duration_ms);
     }
@@ -495,15 +597,24 @@ mod tests {
         assert_eq!(format!("{}", ProjectType::Unknown), "Unknown");
 
         // Test ScanErrorType Display
-        assert_eq!(format!("{}", ScanErrorType::PermissionDenied), "Permission Denied");
+        assert_eq!(
+            format!("{}", ScanErrorType::PermissionDenied),
+            "Permission Denied"
+        );
         assert_eq!(format!("{}", ScanErrorType::IoError), "IO Error");
         assert_eq!(format!("{}", ScanErrorType::Other), "Other Error");
 
         // Test ProjectIndicator Display
         assert_eq!(format!("{}", ProjectIndicator::CargoToml), "Cargo.toml");
         assert_eq!(format!("{}", ProjectIndicator::PackageJson), "package.json");
-        assert_eq!(format!("{}", ProjectIndicator::RequirementsTxt), "requirements.txt");
-        assert_eq!(format!("{}", ProjectIndicator::Custom("test".to_string())), "test");
+        assert_eq!(
+            format!("{}", ProjectIndicator::RequirementsTxt),
+            "requirements.txt"
+        );
+        assert_eq!(
+            format!("{}", ProjectIndicator::Custom("test".to_string())),
+            "test"
+        );
 
         // Test ScanError Display
         let error = ScanError {
@@ -511,7 +622,10 @@ mod tests {
             error_type: ScanErrorType::PermissionDenied,
             message: "Access denied".to_string(),
         };
-        assert_eq!(format!("{}", error), "/test/path: Access denied (Permission Denied)");
+        assert_eq!(
+            format!("{}", error),
+            "/test/path: Access denied (Permission Denied)"
+        );
     }
 
     #[test]
