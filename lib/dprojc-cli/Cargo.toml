@@ -14,7 +14,6 @@ path = "src/main.rs"
 [package.metadata.deb]
 maintainer = "Durable Programming LLC <commercial@durableprogramming.com>"
 copyright = "2025, Durable Programming LLC"
-license-file = ["../../LICENSE-MIT", "5"]
 extended-description = """\
 A pragmatic system for discovering and cataloging software projects within \
 deeply nested directory structures. Identifies projects by detecting markers \
