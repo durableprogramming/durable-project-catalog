@@ -58,3 +58,10 @@ dprojc-db = { path = "lib/dprojc-db" }
 dprojc-core = { path = "lib/dprojc-core" }
 dprojc-docs = { path = "lib/dprojc-docs" }
 dprojc-shell = { path = "lib/dprojc-shell" }
+dprojc-tui = { path = "lib/dprojc-tui" }
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"

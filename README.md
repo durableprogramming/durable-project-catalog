@@ -107,32 +107,20 @@ dpc clean --dry-run --max-age-days 7
 <summary><b>Linux / macOS</b></summary>
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/durableprogramming/durable-project-catalog/master/install.sh | bash
+curl https://get.durableprogramming.com/durable-project-catalog | bash
+
 ```
 
 Or download and run manually:
+
 ```bash
-curl -O https://raw.githubusercontent.com/durableprogramming/durable-project-catalog/master/install.sh
+curl https://get.durableprogramming.com/durable-project-catalog | tee install.sh
 chmod +x install.sh
 ./install.sh
 ```
 
 </details>
 
-<details>
-<summary><b>Windows</b></summary>
-
-**PowerShell (recommended):**
-```powershell
-irm https://raw.githubusercontent.com/durableprogramming/durable-project-catalog/master/install.ps1 | iex
-```
-
-Or with PATH modification:
-```powershell
-irm https://raw.githubusercontent.com/durableprogramming/durable-project-catalog/master/install.ps1 | iex -AddToPath
-```
-
-</details>
 
 Verify installation:
 ```bash
